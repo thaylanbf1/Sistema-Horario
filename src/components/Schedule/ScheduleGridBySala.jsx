@@ -4,7 +4,7 @@ import { diasSemana, horariosLivres } from '../../data/data'
 import { Building2 } from 'lucide-react'
 import ScheduleCell from './ScheduleCell'
 
-const ScheduleGridBySala = ({filters}) => {
+const ScheduleGridBySala = ({filters, periodoAtivo}) => {
     const {horarios, cursos, salas} = useSchedule()
     const [salasAtivas, setSalasAtivas] = useState(salas[0]?.id)
 
@@ -16,7 +16,9 @@ const ScheduleGridBySala = ({filters}) => {
         if(h.salaId !== salasAtivas) return false
         if(filters.cursoId && h.cursoId !== parseInt(filters.cursoId)) return false
         if(filters.diaSemana && h.diaSemana !== filters.diaSemana) return false
+        if(periodoAtivo && h.periodoId !== periodoAtivo) return false
         return true
+        
     })
 
     const diasExibir = filters.diaSemana ? [filters.diaSemana] : diasSemana

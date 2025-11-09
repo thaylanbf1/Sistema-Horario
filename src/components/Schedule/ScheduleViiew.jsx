@@ -76,7 +76,7 @@ const ScheduleViiew = () => {
           cursos={cursos}
           salas={salas}
         />
-          <ScheduleGridBySala filters={filters} />
+          <ScheduleGridBySala filters={filters} periodoAtivo={periodoAtivo} />
       </div>
   )
 }

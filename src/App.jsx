@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react'
 import Header from './components/Header/Header'
 import { ScheduleProvider } from './components/Schedule/ScheduleContext'
@@ -6,6 +5,7 @@ import ScheduleViiew from './components/Schedule/ScheduleViiew'
 import Footer from './components/Footer/Footer'
 import Login from './components/Login/login'
 import Protection from './components/Protection/Protection'
+
 function App() {
 
   const [isAdmin, setIsAdmin] = useState(false)
