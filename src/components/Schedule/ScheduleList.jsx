@@ -2,8 +2,8 @@ import React from 'react'
 import { useSchedule } from './ScheduleContext'
 import { Edit2, Trash2, Calendar } from 'lucide-react'
 
-const ScheduleList = ({onEdit}) => {
-    const {horarios, cursos, salas, removerHorario} = useSchedule()
+const ScheduleList = ({ onEdit }) => {
+    const { horarios, cursos, salas, removerHorario } = useSchedule()
 
     const formatarData = (dataISO) => {
         if (!dataISO) return ''

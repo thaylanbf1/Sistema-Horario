@@ -1,259 +1,277 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSchedule } from './ScheduleContext'
-import { diasSemana, horariosLivres } from '../../data/data';
+import { diasSemana } from '../../data/data'; 
 
+const ScheduleForm = ({ horarioEdit, onSave, onCancel }) => {
 
+    const { 
+        cursos, salas, periodos, professores, disciplinas, 
+        adicionarPeriodo, adicionarProfessor, adicionarDisciplina, adicionarCurso, adicionarSala 
+    } = useSchedule();
 
-const ScheduleForm = ({horarioEdit, onSave, onCancel}) => {
+    const [creationMode, setCreationMode] = useState(null);
 
-    const {cursos, salas, periodos} = useSchedule()
-    const [formData, setFormData] = useState(horarioEdit || {
-        cursoId: '',
-        salaId: '',
-        disciplina: '',
-        professor:'',
-        diaSemana: '',
-        horarioInicio: '',
-        horarioFim:'',
-        semestre:'',
-        dataInicio: '',
-        dataFim: '',
-        periodoId:''
+    const [formData, setFormData] = useState({
+        cursoId: '', salaId: '', disciplinaId: '', professorId: '', periodoId: '',
+        diaSemana: '', horarioInicio: '', horarioFim: '', dataInicio: '', dataFim: ''
     });
 
-    const handleSubmit = (e) => {
-        e.preventDefault()
-        onSave({
-            ...formData,
-            cursoId: parseInt(formData.cursoId),
-            salaId: parseInt(formData.salaId)
-        })
-    }
+    const [newItemData, setNewItemData] = useState({});
 
-     const handlePeriodoChange = (periodoId) => {
-        if (!periodos || periodos.length === 0) {
-            console.warn('Nenhum período disponível')
-            return
-        }
-        
-        const periodo = periodos.find(p => p.id === parseInt(periodoId))
-        if (periodo) {
+    useEffect(() => {
+        if (horarioEdit) {
+            const periodo = periodos.find(p => p.id === horarioEdit.periodoId);
             setFormData({
-                ...formData,
-                periodoId:periodoId,
-                semestre: periodo.semestre,
-                dataInicio: periodo.dataInicio,
-                dataFim: periodo.dataFim
-            })
+                ...horarioEdit,
+                cursoId: String(horarioEdit.cursoId || ''),
+                salaId: String(horarioEdit.salaId || ''),
+                periodoId: String(horarioEdit.periodoId || ''),
+                professorId: String(horarioEdit.professor?.id || horarioEdit.professorId || ''),
+                disciplinaId: String(horarioEdit.disciplina?.id || horarioEdit.disciplinaId || ''),
+                dataInicio: horarioEdit.dataInicio || periodo?.dataInicio || '',
+                dataFim: horarioEdit.dataFim || periodo?.dataFim || ''
+            });
         }
+    }, [horarioEdit, periodos]);
+
+    const handleChange = (field, value) => {
+        if (value === 'novo') {
+            let mode = '';
+            if (field === 'periodoId') mode = 'periodo';
+            if (field === 'professorId') mode = 'professor';
+            if (field === 'disciplinaId') mode = 'disciplina';
+            if (field === 'cursoId') mode = 'curso';
+            if (field === 'salaId') mode = 'sala';
+            
+            setCreationMode(mode);
+            setNewItemData({});
+        } else {
+            setFormData({ ...formData, [field]: value });
+            
+            if (field === 'periodoId') {
+                const p = periodos.find(item => item.id === parseInt(value));
+                if (p) setFormData(prev => ({ ...prev, periodoId: value, dataInicio: p.dataInicio, dataFim: p.dataFim }));
+            }
+        }
+    };
+
+    const handleCreateItem = async (e) => {
+        e.preventDefault();
+        let newId = null;
+
+        if (creationMode === 'periodo') {
+            newId = await adicionarPeriodo({
+                ...newItemData,
+                dataInicio: new Date(newItemData.dataInicio).toISOString(),
+                dataFim: new Date(newItemData.dataFim).toISOString()
+            });
+        }
+        else if (creationMode === 'professor') newId = await adicionarProfessor(newItemData);
+        else if (creationMode === 'disciplina') newId = await adicionarDisciplina(newItemData);
+        else if (creationMode === 'curso') newId = await adicionarCurso(newItemData);
+        else if (creationMode === 'sala') newId = await adicionarSala(newItemData);
+
+        if (newId) {
+            alert(`${creationMode.toUpperCase()} criado com sucesso!`);
+            setFormData(prev => ({ ...prev, [creationMode + 'Id']: newId }));
+            setCreationMode(null);
+        }
+    };
+
+    const handleSubmitHorario = (e) => {
+        e.preventDefault();
+        
+        try {
+            if (formData.horarioInicio >= formData.horarioFim) {
+                alert("⚠️ O horário de término deve ser maior que o horário de início.");
+                return;
+            }
+
+            if (!formData.dataInicio || !formData.dataFim) {
+                alert("Por favor, preencha as datas de início e fim.");
+                return;
+            }
+
+            onSave({
+                cursoId: parseInt(formData.cursoId),
+                salaId: parseInt(formData.salaId),
+                professorId: parseInt(formData.professorId),
+                disciplinaId: parseInt(formData.disciplinaId),
+                periodoId: parseInt(formData.periodoId),
+                diaSemana: formData.diaSemana,
+                horarioInicio: formData.horarioInicio,
+                horarioFim: formData.horarioFim,
+                dataInicio: new Date(formData.dataInicio).toISOString(),
+                dataFim: new Date(formData.dataFim).toISOString()
+            });
+
+        } catch (error) {
+            console.error("Erro ao preparar dados:", error);
+            alert("Erro nos dados do formulário: " + error.message);
+        }
+    };
+
+    const inputClass = "px-4 py-2.5 border border-gray-300 rounded-lg w-full bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none";
+
+    if (creationMode) {
+        return (
+            <div className='bg-gray-50 p-8 rounded-lg mb-8 border border-green-200 shadow-sm'>
+                <h3 className='text-xl font-bold text-green-800 mb-6'>
+                    Novo Cadastro: {creationMode.toUpperCase()}
+                </h3>
+                <form onSubmit={handleCreateItem} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    {creationMode === 'periodo' && (
+                        <>
+                            <input placeholder="Semestre (Ex: 2025.1)" className={inputClass} onChange={e => setNewItemData({...newItemData, semestre: e.target.value})} required />
+                            <input placeholder="Descrição (Ex: 1º Bimestre)" className={inputClass} onChange={e => setNewItemData({...newItemData, descricao: e.target.value})} required />
+                            <input type="date" className={inputClass} onChange={e => setNewItemData({...newItemData, dataInicio: e.target.value})} required />
+                            <input type="date" className={inputClass} onChange={e => setNewItemData({...newItemData, dataFim: e.target.value})} required />
+                        </>
+                    )}
+
+                    {creationMode === 'professor' && (
+                        <>
+                            <input placeholder="Nome" className={inputClass} onChange={e => setNewItemData({...newItemData, nomeProf: e.target.value})} required />
+                            <input placeholder="Email" className={inputClass} onChange={e => setNewItemData({...newItemData, emailProf: e.target.value})} required />
+                            <input placeholder="Matrícula" className={inputClass} onChange={e => setNewItemData({...newItemData, matriculaProf: e.target.value})} required />
+                        </>
+                    )}
+
+                    {creationMode === 'disciplina' && (
+                        <>
+                            <input placeholder="Nome Disciplina" className={inputClass} onChange={e => setNewItemData({...newItemData, nomeDisciplina: e.target.value})} required />
+                            <input placeholder="Código (Sigla)" className={inputClass} onChange={e => setNewItemData({...newItemData, matriculaDisciplina: e.target.value})} required />
+                        </>
+                    )}
+
+                    {creationMode === 'sala' && (
+                        <>
+                            <input placeholder="Nome Sala (Ex: Lab 01)" className={inputClass} onChange={e => setNewItemData({...newItemData, nomeSala: e.target.value})} required />
+                            <select className={inputClass} onChange={e => setNewItemData({...newItemData, tipoSala: e.target.value})} required>
+                                <option value="">Selecione Tipo...</option>
+                                <option value="sala">Sala de Aula</option>
+                                <option value="laboratorio">Laboratório</option>
+                            </select>
+                        </>
+                    )}
+
+                    {creationMode === 'curso' && (
+                        <>
+                            <input placeholder="Nome Curso" className={inputClass} onChange={e => setNewItemData({...newItemData, nomeCurso: e.target.value})} required />
+                            <input placeholder="Sigla" className={inputClass} onChange={e => setNewItemData({...newItemData, siglaCurso: e.target.value})} required />
+                            
+                            <div className='flex flex-col gap-2'>
+                                <label className='text-sm font-semibold text-gray-700'>Cor de Identificação</label>
+                                <div className="flex items-center gap-3">
+                                    <input 
+                                        type="color" 
+                                        className="h-10 w-20 border border-gray-300 rounded cursor-pointer p-1" 
+                                        onChange={e => setNewItemData({...newItemData, corCurso: e.target.value})} 
+                                        defaultValue="#000000"
+                                        required 
+                                    />
+                                    <span className="text-sm text-gray-500">Clique para escolher</span>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    <div className="col-span-full flex justify-end gap-2 mt-4">
+                        <button type="button" onClick={() => setCreationMode(null)} className="px-4 py-2 border rounded-lg hover:bg-gray-100">Cancelar</button>
+                        <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700">Salvar {creationMode}</button>
+                    </div>
+                </form>
+            </div>
+        );
     }
-    const inputClasses = "px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
 
-    
-  return (
-    <form onSubmit={handleSubmit} className='bg-gray-50 p-8 rounded-lg mb-8 border border-gray-200 shadow-sm'>
-            <h3 className='text-xl font-bold text-gray-900 mb-6'>
-                {horarioEdit ? 'Editar Horário' : 'Novo Horário'}
-            </h3>
-
+    return (
+        <form onSubmit={handleSubmitHorario} className='bg-gray-50 p-8 rounded-lg mb-8 border border-gray-200 shadow-sm'>
+            <h3 className='text-xl font-bold text-gray-900 mb-6'>{horarioEdit ? 'Editar Horário' : 'Novo Horário'}</h3>
+            
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6'>
-               
-                {periodos && periodos.length > 0 && (
-                    <div className='flex flex-col gap-2 lg:col-span-2'>
-                        <label className='text-sm font-semibold text-gray-700'>Período Letivo*</label>
-                        <select 
-                            className={inputClasses}
-                            value={formData.periodoId || ''}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                if (value === 'novo') {
-                                    setFormData({
-                                        ...formData,
-                                        periodoId: 'novo',
-                                        semestre: '',
-                                        dataInicio: '',
-                                        dataFim: ''
-                                    });
-                                } else {
-                                    handlePeriodoChange(value);
-                                }
-                            }}
-                            required>
-                            <option value="">Selecione o período...</option>
-                            {periodos.map(p => (
-                                <option key={p.id} value={p.id}>
-                                    {p.semestre} - {p.descricao} ({p.dataInicio} até {p.dataFim})
-                                </option>
-                            ))}
-                            <option value="novo">Criar novo período...</option>
+                
+                {/* PERIODOS */}
+                <div className='lg:col-span-4 flex flex-col gap-2'>
+                    <label className='text-sm font-bold text-gray-700'>Período</label>
+                    <select className={inputClass} value={formData.periodoId} onChange={e => handleChange('periodoId', e.target.value)} required>
+                        <option value="">Selecione...</option>
+                        {periodos.map(p => <option key={p.id} value={p.id}>{p.semestre} - {p.descricao}</option>)}
+                        <option value="novo" className="font-bold text-blue-600">+ Criar novo período...</option>
+                    </select>
+                </div>
+
+                {/* DATAS (EDITÁVEIS) */}
+                <div className='flex flex-col gap-2'>
+                    <label className='text-sm font-bold text-gray-700'>Data Início</label>
+                    <input type="date" className={inputClass} value={formData.dataInicio} onChange={e => setFormData({...formData, dataInicio: e.target.value})} required />
+                </div>
+                <div className='flex flex-col gap-2'>
+                    <label className='text-sm font-bold text-gray-700'>Data Fim</label>
+                    <input type="date" className={inputClass} value={formData.dataFim} onChange={e => setFormData({...formData, dataFim: e.target.value})} required />
+                </div>
+
+                {/* DROPDOWNS COM OPÇÃO DE CRIAR */}
+                {[
+                    { label: 'Curso', field: 'cursoId', list: cursos, nameKey: 'nome', gender: 'o' },
+                    { label: 'Sala', field: 'salaId', list: salas, nameKey: 'nome', gender: 'a' },
+                    { label: 'Disciplina', field: 'disciplinaId', list: disciplinas, nameKey: 'nome', gender: 'a' },
+                    { label: 'Professor', field: 'professorId', list: professores, nameKey: 'nome', gender: 'o' },
+                ].map((item) => (
+                    <div key={item.field} className='flex flex-col gap-2'>
+                        <label className='text-sm font-bold text-gray-700'>{item.label}</label>
+                        <select className={inputClass} value={formData[item.field]} onChange={e => handleChange(item.field, e.target.value)} required>
+                            <option value="">Selecione...</option>
+                            {item.list.map(i => <option key={i.id} value={i.id}>{i[item.nameKey]}</option>)}
+                            <option value="novo" className="font-bold text-blue-600">
+                                + Nov{item.gender} {item.label}
+                            </option>
                         </select>
                     </div>
-                )}
+                ))}
 
-                {/* Campos de período */}
-                {formData.periodoId === 'novo' && (
-                    <div className='flex flex-col gap-2'>
-                        <label className='text-sm font-semibold text-gray-700'>Semestre/Mês/Semana*</label>
-                        <input 
-                            className={inputClasses}
-                            value={formData.semestre}
-                            onChange={(e) => setFormData({...formData, semestre: e.target.value})}
-                            placeholder='Ex: 2025.1'
-                            required
-                        />
-                    </div>
-                )}
-
-                {formData.periodoId && formData.periodoId !== 'novo' && (
-                    <div className='flex flex-col gap-2'>
-                        <label className='text-sm font-semibold text-gray-700'>Semestre</label>
-                        <input 
-                            className={`${inputClasses} bg-gray-100`}
-                            value={formData.semestre}
-                            type='text'
-                            readOnly
-                        />
-                    </div>
-                )}
-
-                {formData.periodoId && (
-                    <>
-                        <div className='flex flex-col gap-2'>
-                            <label className='text-sm font-semibold text-gray-700'>Data Início{formData.periodoId === 'novo' ? '*' : ''}</label>
-                            <input 
-                                className={formData.periodoId === 'novo' ? inputClasses : `${inputClasses} bg-gray-100`}
-                                type='date'
-                                value={formData.dataInicio}
-                                onChange={(e) => setFormData({...formData, dataInicio: e.target.value})}
-                                readOnly={formData.periodoId !== 'novo'}
-                                required={formData.periodoId === 'novo'}
-                            />
-                        </div>
-
-                        <div className='flex flex-col gap-2'>
-                            <label className='text-sm font-semibold text-gray-700'>Data Fim{formData.periodoId === 'novo' ? '*' : ''}</label>
-                            <input 
-                                className={formData.periodoId === 'novo' ? inputClasses : `${inputClasses} bg-gray-100`}
-                                type='date'
-                                value={formData.dataFim}
-                                onChange={(e) => setFormData({...formData, dataFim: e.target.value})}
-                                readOnly={formData.periodoId !== 'novo'}
-                                required={formData.periodoId === 'novo'}
-                            />
-                        </div>
-                    </>
-                )}
-
-                {/* Resto dos campos */}
+                {/* DIA DA SEMANA */}
                 <div className='flex flex-col gap-2'>
-                    <label className='text-sm font-semibold text-gray-700'>Curso*</label>
-                    <select 
-                        className={inputClasses} 
-                        value={formData.cursoId} 
-                        onChange={(e) => setFormData({...formData, cursoId: e.target.value})}
-                        required
-                    >
-                        <option value="">Selecione...</option>
-                        {cursos && cursos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                    </select>
-                </div>
-
-                <div className='flex flex-col gap-2'>
-                    <label className='text-sm font-semibold text-gray-700'>Sala/Lab*</label>
-                    <select 
-                        className={inputClasses} 
-                        value={formData.salaId} 
-                        onChange={(e) => setFormData({...formData, salaId: e.target.value})}
-                        required
-                    >
-                        <option value="">Selecione...</option>
-                        {salas && salas.map(s => (
-                            <option key={s.id} value={s.id}>
-                                {s.nome} ({s.tipo})
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className='flex flex-col gap-2'>
-                    <label className='text-sm font-semibold text-gray-700'>Disciplina*</label>
-                    <input 
-                        className={inputClasses} 
-                        value={formData.disciplina} 
-                        type='text'
-                        onChange={(e) => setFormData({...formData, disciplina: e.target.value})}
-                        required 
-                    />
-                </div>
-
-                <div className='flex flex-col gap-2'>
-                    <label className='text-sm font-semibold text-gray-700'>Professor*</label>
-                    <input 
-                        className={inputClasses} 
-                        value={formData.professor} 
-                        type='text'
-                        onChange={(e) => setFormData({...formData, professor: e.target.value})}
-                        required 
-                    />
-                </div>
-
-                <div className='flex flex-col gap-2'>
-                    <label className='text-sm font-semibold text-gray-700'>Dia da Semana*</label>
-                    <select 
-                        className={inputClasses} 
-                        value={formData.diaSemana}
-                        onChange={(e) => setFormData({...formData, diaSemana: e.target.value})}
-                        required
-                    >
+                    <label className='text-sm font-bold text-gray-700'>Dia</label>
+                    <select className={inputClass} value={formData.diaSemana} onChange={e => setFormData({...formData, diaSemana: e.target.value})} required>
                         <option value="">Selecione...</option>
                         {diasSemana.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                 </div>
 
-                <div className='flex flex-col gap-2'>
-                    <label className='text-sm font-semibold text-gray-700'>Horário de Início*</label>
-                    <select 
-                        className={inputClasses} 
-                        value={formData.horarioInicio}
-                        onChange={(e) => setFormData({...formData, horarioInicio: e.target.value})}
-                        required
-                    >
-                        <option value="">Selecione...</option>
-                        {horariosLivres.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                </div>
 
                 <div className='flex flex-col gap-2'>
-                    <label className='text-sm font-semibold text-gray-700'>Horário de Término*</label>
-                    <select 
-                        className={inputClasses} 
-                        value={formData.horarioFim}
-                        onChange={(e) => setFormData({...formData, horarioFim: e.target.value})}
-                        required
-                    >
-                        <option value="">Selecione...</option>
-                        {horariosLivres.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
+                    <label className='text-sm font-bold text-gray-700'>Início</label>
+                    <input 
+                        type="time" 
+                        className={inputClass} 
+                        value={formData.horarioInicio} 
+                        onChange={e => setFormData({...formData, horarioInicio: e.target.value})} 
+                        required 
+                    />
                 </div>
+                <div className='flex flex-col gap-2'>
+                    <label className='text-sm font-bold text-gray-700'>Fim</label>
+                    <input 
+                        type="time" 
+                        className={inputClass} 
+                        value={formData.horarioFim} 
+                        onChange={e => setFormData({...formData, horarioFim: e.target.value})} 
+                        required 
+                    />
+                </div>
+
             </div>
 
             <div className='flex gap-4 justify-end'>
-                <button 
-                    type='button' 
-                    onClick={onCancel} 
-                    className='px-6 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-colors'
-                >
-                    Cancelar
-                </button>
-                <button 
-                    type='submit'
-                    className='px-6 py-2.5 bg-blue-600 rounded-lg text-white font-semibold hover:bg-blue-700 hover:-translate-y-0.5 transition-all duration-200 shadow-sm hover:shadow-md'
-                >
-                    {horarioEdit ? 'Atualizar' : 'Salvar'}
+                <button type='button' onClick={onCancel} className='px-6 py-2 border rounded-lg hover:bg-gray-50'>Cancelar</button>
+                <button type='submit' className='px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700'>
+                    {horarioEdit ? 'Atualizar Horário' : 'Salvar Horário'}
                 </button>
             </div>
         </form>
-  )
+    );
 }
 
 export default ScheduleForm
