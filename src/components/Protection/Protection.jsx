@@ -31,8 +31,8 @@ const Protection = ({onLogOut}) => {
         </div>
       </div>
       <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-2.5 py-8'>
-      <AdminPainel/>
-    </main>
+        <AdminPainel/>
+      </main>
     </div>
   )
 }
