@@ -46,6 +46,7 @@ export const initialData = {
     ]
 }
 
-export const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
+export const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
-export const horariosLivres = ['07:30', '10:00', '13:30', '14:00', '16:00']
+export const horariosLivres = [
+]
