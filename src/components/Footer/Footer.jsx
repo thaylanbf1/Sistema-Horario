@@ -19,7 +19,7 @@ const Footer = () => {
                         <span className='hidden md:inline'>•</span>
                         <span className='font-bold'>Driele Carvalho</span>
                         <span className='hidden md:inline'>•</span>
-                        <span className='font-bold'> Thaylan Fonseca</span>
+                        <span className='font-bold'>Thaylan Fonseca</span>
                         <span className='hidden md:inline'>•</span>
                         <span className='font-bold'>Iam Melo</span>
                         <span className='hidden md:inline'>•</span>
@@ -31,7 +31,7 @@ const Footer = () => {
 
             <div className='pt-6 text-center md:text-left'>
                 <p className='text-sm text-gray-400'>
-                    &copy; {new Date().getFullYear()} [nome a definir].
+                    &copy; {new Date().getFullYear()} SCA UEPA - Sistema Cronos de Alocação / UEPA Ananindeua.
                     Todos os direitos reservados.
                 </p>
             </div>
