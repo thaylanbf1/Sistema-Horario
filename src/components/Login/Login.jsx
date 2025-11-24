@@ -41,7 +41,7 @@ const Login = ({onLoginSuccess}) => {
     }
 
   return (
-     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-[#3f86e4d5] via-[#814be6] to-slate-950 relative overflow-hidden">
+     <div className="min-h-screen flex items-center justify-center p-6 bg-linear-to-br from-[#3f86e4d5] via-[#814be6] to-slate-950 relative overflow-hidden">
             {/* Efeitos de fundo decorativos */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute left-1/4 top-1/4 w-96 h-96 bg-[#282e697a] rounded-full blur-3xl animate-pulse"></div>
@@ -123,7 +123,7 @@ const Login = ({onLoginSuccess}) => {
                             type="submit" 
                             disabled={loading}
                             className="relative w-full rounded-lg py-3 px-4 font-semibold text-white 
-                                     bg-gradient-to-r from-[#22184d] to-indigo-600 
+                                     bg-linear-to-r from-[#22184d] to-indigo-600 
                                      hover:from-purple-700 hover:to-indigo-700 
                                      focus:outline-none focus:ring-4 focus:ring-purple-500/50
                                      transition-all duration-200 transform active:scale-95 
