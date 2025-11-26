@@ -143,10 +143,10 @@ const DataManager = () => {
                         </div>
                         
                         <div className="flex gap-2">
-                            <button onClick={() => setEditingItem(item)} className="text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-all">
+                            <button onClick={() => setEditingItem(item)} className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 hover:scale-110 transition-all">
                                 <Edit2 size={18} />
                             </button>
-                            <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:bg-red-100 p-2 rounded-full transition-all">
+                            <button onClick={() => handleDelete(item.id)} className="p-2 bg-red-500 text-white rounded hover:bg-red-600 hover:scale-110 transition-all">
                                 <Trash2 size={18} />
                             </button>
                         </div>

@@ -1,9 +1,9 @@
 import { diasSemana } from "../../data/data"
-import { BookOpen, Users, Calendar } from "lucide-react"
+import { BookOpen, Calendar } from "lucide-react"
 
 const Filters = ({filters, setFilters, cursos, salas}) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
         <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <BookOpen size={18} className="text-[#153d64]" />
@@ -16,7 +16,8 @@ const Filters = ({filters, setFilters, cursos, salas}) => {
             </select>
         </div>
 
-        <div className="flex flex-col gap-2">
+        {/* div retirada por ja existir função que a substitui */}
+        {/* <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <Users size={18} className="text-[#153d64]"/>
                 Sala/Laboratório
@@ -25,7 +26,7 @@ const Filters = ({filters, setFilters, cursos, salas}) => {
                 <option value="">Todas as salas</option>
                 {salas.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
             </select>
-        </div>
+        </div> */}
 
         <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
