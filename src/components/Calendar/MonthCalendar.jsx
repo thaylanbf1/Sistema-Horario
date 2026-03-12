@@ -235,14 +235,27 @@ const MonthCalendar = () => {
                                     }}
                                 >
                                     {/* Número do dia */}
-                                    <span className="text-xs font-black w-6 h-6 flex items-center justify-center rounded-lg mb-1"
+                                    const isToday = todayFlag && !selFlag
+
+                                        <span
+                                        className="text-xs font-black w-6 h-6 flex items-center justify-center rounded-lg mb-1"
                                         style={{
-                                            color: selFlag ? 'white' : isPast ? '#9ca3af' : style.text,
-                                            background: todayFlag && !selFlag ? '#818cf8' : selFlag ? 'rgba(255,255,255,0.2)' : 'transparent',
-                                            color: todayFlag && !selFlag ? 'white' : selFlag ? 'white' : isPast ? '#9ca3af' : style.text,
-                                        }}>
+                                            background: isToday
+                                            ? '#818cf8'
+                                            : selFlag
+                                            ? 'rgba(255,255,255,0.2)'
+                                            : 'transparent',
+                                            color: isToday
+                                            ? 'white'
+                                            : selFlag
+                                            ? 'white'
+                                            : isPast
+                                            ? '#9ca3af'
+                                            : style.text,
+                                        }}
+                                        >
                                         {date.getDate()}
-                                    </span>
+                                        </span>
 
                                     {/* Mini indicadores de salas */}
                                     {stats.ocupadas > 0 && (

@@ -15,7 +15,7 @@ const getInitialAdmin = () =>
 function App() {
   const [userRole, setUserRole]   = useState(getInitialRole)
   const [isAdmin,  setIsAdmin]    = useState(getInitialAdmin)
-  const [showLogin, setShowLogin] = useState(false)
+  const [showLogin, setShowLogin] = useState(true)
 
   const isAuthenticated = userRole !== null
 
@@ -31,7 +31,7 @@ function App() {
     localStorage.removeItem('userRole')
     setUserRole(null)
     setIsAdmin(false)
-    setShowLogin(false)
+    setShowLogin(true)
   }
 
   if (isAdmin && isAuthenticated) {
