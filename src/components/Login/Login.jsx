@@ -1,20 +1,25 @@
 import { useState } from "react"
-import {Shield, AlertCircle, User, Lock} from 'lucide-react'
+import { Shield, AlertCircle, User, Lock, Eye, EyeOff, GraduationCap, BookOpen, Users } from 'lucide-react'
+import logo from '../../assets/logouepa.png'
 
-const Login = ({onLoginSuccess}) => {
-    const [formData, setFormData] = useState({
-        username: '',
-        password:''
-    })
-
+const Login = ({ onLoginSuccess }) => {
+    const [formData, setFormData] = useState({ username: '', password: '' })
     const [showPassword, setShowPassword] = useState(false)
-    const [error, setError] = useState()
+    const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+    const [activeRole, setActiveRole] = useState('admin') // 'admin' | 'aluno' | 'professor'
 
-    const ADMIN_CREDENTIALS = {
-        username:'admin',
-        password:'admin456'
-    };
+    const CREDENTIALS = {
+        admin:     { username: 'admin',     password: 'admin456' },
+        aluno:     { username: 'aluno',     password: 'aluno123' },
+        professor: { username: 'professor', password: 'prof123'  },
+    }
+
+    const roleConfig = {
+        admin:     { label: 'Administrador', icon: Shield,      color: '#1c1aa3', desc: 'Acesso completo ao sistema' },
+        aluno:     { label: 'Aluno',          icon: GraduationCap, color: '#7c3aed', desc: 'Visualizar grade de horários' },
+        professor: { label: 'Professor',      icon: BookOpen,    color: '#1d4ed8', desc: 'Consultar disponibilidade de salas' },
+    }
 
     const handleSubmit = (e) => {
         e.preventDefault()
@@ -22,144 +27,229 @@ const Login = ({onLoginSuccess}) => {
         setLoading(true)
 
         setTimeout(() => {
-            if(formData.username === ADMIN_CREDENTIALS.username && formData.password === ADMIN_CREDENTIALS.password){
-                localStorage.setItem('isAdminAuthenticated', true)
+            const cred = CREDENTIALS[activeRole]
+            if (formData.username === cred.username && formData.password === cred.password) {
+                localStorage.setItem('isAdminAuthenticated', activeRole === 'admin' ? 'true' : 'false')
                 localStorage.setItem('adminUser', formData.username)
-                onLoginSuccess()
-            }else{
-                setError('Usuario ou senha incorretos')
-                setLoading('false')
+                localStorage.setItem('userRole', activeRole)
+                onLoginSuccess(activeRole)
+            } else {
+                setError('Usuário ou senha incorretos')
+                setLoading(false)
             }
         }, 1000)
     }
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData, [e.target.name]: e.target.value
-        })
+        setFormData({ ...formData, [e.target.name]: e.target.value })
         setError('')
     }
 
-  return (
-     <div className="min-h-screen flex items-center justify-center p-6 bg-linear-to-br from-[#3f86e4d5] via-[#814be6] to-slate-950 relative overflow-hidden">
-            {/* Efeitos de fundo decorativos */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute left-1/4 top-1/4 w-96 h-96 bg-[#282e697a] rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute right-1/4 bottom-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl animate-pulse"></div>
+    const CurrentIcon = roleConfig[activeRole].icon
+
+    return (
+        <div className="min-h-screen flex items-center justify-center p-4"
+            style={{ background: 'linear-gradient(135deg, #0f0c29 0%, #1c1aa3 50%, #150355 100%)' }}>
+
+            {/* Orbs decorativos */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full opacity-20"
+                    style={{ background: 'radial-gradient(circle, #7c3aed, transparent)', filter: 'blur(60px)', animation: 'pulse 4s ease-in-out infinite' }} />
+                <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full opacity-20"
+                    style={{ background: 'radial-gradient(circle, #1c1aa3, transparent)', filter: 'blur(60px)', animation: 'pulse 4s ease-in-out infinite 2s' }} />
             </div>
 
-            {/* Card principal */}
-            <div className="w-full max-w-md relative z-10">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <div className="mx-auto mb-6 inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#4338e0d3] shadow-lg shadow-purple-500/50">
-                        <Shield size={32} className="text-white" />
+            {/* Card principal — split layout */}
+            <div className="relative z-10 w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex"
+                style={{ minHeight: '520px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}>
+
+                {/* ── Painel esquerdo: formulário ── */}
+                <div className="flex-1 bg-white flex flex-col justify-center px-10 py-10">
+
+                    {/* Logo */}
+                    <div className="flex items-center gap-3 mb-8">
+                        <img src={logo} alt="Logo UEPA" className="h-10 object-contain" />
+                        <div>
+                            <p className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1c1aa3' }}>SCA UEPA</p>
+                            <p className="text-[10px] text-gray-400 tracking-wide">Sistema Cronos de Alocação</p>
+                        </div>
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">
-                        Painel Administrativo
+
+                    <h1 className="text-3xl font-black text-gray-900 mb-1 tracking-tight">
+                        Bem-vindo
                     </h1>
-                    <p className="text-sm text-white">
-                        Assessoria Pedagógica - Área Restrita
-                    </p>
-                </div>
+                    <p className="text-sm text-gray-500 mb-6">Selecione seu perfil e faça login</p>
 
-                {/* Formulário */}
-                <div className="backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Mensagem de erro */}
-                        {error && (
-                            <div className="flex items-center gap-2 text-red-500 bg-red-500/20 border border-red-500/30 p-4 rounded-lg">
-                                <AlertCircle size={20} />
-                                <span className="text-sm font-medium">{error}</span>
-                            </div>
-                        )}
+                    {/* Seletor de perfil */}
+                    <div className="flex gap-2 mb-6">
+                        {Object.entries(roleConfig).map(([key, cfg]) => {
+                            const Icon = cfg.icon
+                            const isActive = activeRole === key
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => { setActiveRole(key); setError(''); setFormData({ username: '', password: '' }) }}
+                                    className="cursor-pointer flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 transition-all duration-200 text-center"
+                                    style={{
+                                        borderColor: isActive ? cfg.color : '#e5e7eb',
+                                        backgroundColor: isActive ? cfg.color + '12' : 'transparent',
+                                        color: isActive ? cfg.color : '#6b7280',
+                                        transform: isActive ? 'translateY(-2px)' : 'none',
+                                        boxShadow: isActive ? `0 4px 16px ${cfg.color}30` : 'none',
+                                    }}>
+                                    <Icon size={18} />
+                                    <span className="text-[11px] font-bold">{cfg.label}</span>
+                                </button>
+                            )
+                        })}
+                    </div>
 
-                        {/* Campo Usuário */}
-                        <div className="space-y-2">
-                            <label 
-                                htmlFor="username" 
-                                className="text-sm font-semibold text-white flex items-center gap-2"
-                            >
-                                <User size={18} />
-                                Usuário
-                            </label>
-                            <input 
-                            type="text" 
-                            id="username" 
-                            name="username" 
-                            value={formData.username} 
-                            onChange={handleChange} 
-                            placeholder="Digite seu usuário" 
-                            required 
-                            autoComplete="username"
-                            className="w-full px-4 py-3 rounded-lg bg-[#22184d] border border-slate-600/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"/>
+                    {/* Erro */}
+                    {error && (
+                        <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-xl mb-4 text-sm">
+                            <AlertCircle size={16} />
+                            <span>{error}</span>
+                        </div>
+                    )}
+
+                    {/* Formulário */}
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                        <div className="relative">
+                            <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                name="username"
+                                value={formData.username}
+                                onChange={handleChange}
+                                placeholder="Usuário"
+                                required
+                                autoComplete="username"
+                                className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none focus:ring-2 transition-all"
+                                style={{ focusBorderColor: roleConfig[activeRole].color }}
+                                onFocus={e => e.target.style.borderColor = roleConfig[activeRole].color}
+                                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                            />
                         </div>
 
-                        {/* Campo Senha */}
-                        <div className="space-y-2">
-                            <label 
-                                htmlFor="password" 
-                                className="text-sm font-semibold text-white flex items-center gap-2"
-                            >
-                                <Lock size={18} />
-                                Senha
-                            </label>
-                            <div className="relative">
-                                <input 
-                                type={showPassword ? 'text' : 'password'} 
-                                id="password" 
-                                name="password" 
-                                value={formData.password} 
-                                onChange={handleChange} 
-                                required 
-                                placeholder="Digite sua senha" 
+                        <div className="relative">
+                            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Senha"
+                                required
                                 autoComplete="current-password"
-                                className="w-full px-4 py-3  rounded-lg bg-[#22184d] border border-slate-600/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"/>
-                            </div>
+                                className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none focus:ring-2 transition-all"
+                                onFocus={e => e.target.style.borderColor = roleConfig[activeRole].color}
+                                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                            />
+                            <button type="button" onClick={() => setShowPassword(p => !p)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
                         </div>
 
-                        {/* Botão de Login */}
-                        <button 
-                            type="submit" 
+                        <p className="text-xs text-right -mt-2" style={{ color: roleConfig[activeRole].color }}>
+                            <span className="cursor-pointer hover:underline">Esqueceu a senha?</span>
+                        </p>
+
+                        <button
+                            type="submit"
                             disabled={loading}
-                            className="relative w-full rounded-lg py-3 px-4 font-semibold text-white 
-                                     bg-linear-to-r from-[#22184d] to-indigo-600 
-                                     hover:from-purple-700 hover:to-indigo-700 
-                                     focus:outline-none focus:ring-4 focus:ring-purple-500/50
-                                     transition-all duration-200 transform active:scale-95 
-                                     disabled:opacity-50 disabled:cursor-not-allowed
-                                     shadow-lg shadow-purple-500/50"
-                        >
+                            className="cursor-pointer w-full py-3 rounded-xl font-bold text-white text-sm tracking-wide transition-all duration-200 disabled:opacity-60"
+                            style={{
+                                background: `linear-gradient(135deg, ${roleConfig[activeRole].color}, #7c3aed)`,
+                                boxShadow: `0 8px 24px ${roleConfig[activeRole].color}50`,
+                            }}>
                             {loading ? (
                                 <span className="flex items-center justify-center gap-2">
-                                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                     </svg>
                                     Entrando...
                                 </span>
                             ) : (
                                 <span className="flex items-center justify-center gap-2">
-                                    <Lock size={20} />
-                                    Entrar no Painel
+                                    <CurrentIcon size={16} />
+                                    Entrar como {roleConfig[activeRole].label}
                                 </span>
                             )}
                         </button>
                     </form>
 
-                    {/* Informações de teste */}
-                    <div className="mt-6 pt-6 border-t border-slate-700/50">
-                        <p className="text-xs text-slate-400 text-center">
-                            💡 <strong className="text-slate-300">Credenciais de teste:</strong>
-                            <br />
-                            Usuário: <code className="text-purple-400">admin</code> | 
-                            Senha: <code className="text-purple-400">admin456</code>
+                    {/* Hint de credenciais */}
+                    <p className="mt-5 text-[11px] text-gray-400 text-center">
+                        Teste — {activeRole}: <span className="font-mono text-gray-500">{CREDENTIALS[activeRole].username}</span> / <span className="font-mono text-gray-500">{CREDENTIALS[activeRole].password}</span>
+                    </p>
+                </div>
+
+                {/* ── Painel direito: ilustração / info ── */}
+                <div className="hidden md:flex w-80 flex-col items-center justify-center px-10 py-10 relative overflow-hidden"
+                    style={{ background: `linear-gradient(160deg, #1c1aa3 0%, #150355 60%, #7c3aed 100%)` }}>
+
+                    {/* Formas geométricas decorativas */}
+                    <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-10"
+                        style={{ background: 'white', transform: 'translate(30%, -30%)' }} />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-10"
+                        style={{ background: 'white', transform: 'translate(-30%, 30%)' }} />
+                    <div className="absolute top-1/2 left-1/2 w-32 h-32 rounded-full opacity-5"
+                        style={{ background: 'white', transform: 'translate(-50%, -50%)' }} />
+
+                    <div className="relative z-10 text-center">
+                        {/* Ícone animado */}
+                        <div className="mx-auto mb-6 w-20 h-20 rounded-2xl flex items-center justify-center"
+                            style={{
+                                background: 'rgba(255,255,255,0.15)',
+                                backdropFilter: 'blur(10px)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                            }}>
+                            <CurrentIcon size={36} className="text-white" />
+                        </div>
+
+                        <h2 className="text-2xl font-black text-white mb-3 leading-tight">
+                            {activeRole === 'admin' ? 'Painel Admin' :
+                             activeRole === 'aluno' ? 'Olá, Aluno!' : 'Olá, Professor!'}
+                        </h2>
+                        <p className="text-sm text-blue-200 leading-relaxed mb-8">
+                            {activeRole === 'admin'
+                                ? 'Gerencie horários, salas, professores e toda a grade acadêmica.'
+                                : activeRole === 'aluno'
+                                ? 'Consulte a disponibilidade de salas e visualize a grade de horários.'
+                                : 'Verifique os horários das turmas e a disponibilidade das salas.'}
                         </p>
+
+                        {/* Feature list */}
+                        <div className="flex flex-col gap-3 text-left">
+                            {(activeRole === 'admin'
+                                ? ['Gerenciar alocações', 'Cadastrar professores', 'Configurar salas e cursos']
+                                : ['Ver grade de horários', 'Consultar disponibilidade', 'Filtrar por curso e dia']
+                            ).map((feat, i) => (
+                                <div key={i} className="flex items-center gap-3">
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                                        style={{ background: 'rgba(255,255,255,0.2)' }}>
+                                        <span className="text-white text-[10px] font-bold">{i + 1}</span>
+                                    </div>
+                                    <span className="text-sm text-blue-100">{feat}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Badge de acesso */}
+                        <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold"
+                            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: 'white' }}>
+                            <div className="w-2 h-2 rounded-full bg-green-400" style={{ animation: 'pulse 2s infinite' }} />
+                            {activeRole === 'admin' ? 'Acesso Completo' : 'Somente Visualização'}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-  )
+    )
 }
 
 export default Login
