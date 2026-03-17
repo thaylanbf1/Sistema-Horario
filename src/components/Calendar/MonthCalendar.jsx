@@ -223,6 +223,8 @@ const MonthCalendar = () => {
                             const style  = getCellStyle(stats.taxa, todayFlag, selFlag)
                             const isPast = date < today && !todayFlag
 
+                            const isTodayHighlight = todayFlag && !selFlag
+
                             return (
                                 <button
                                     key={idx}
@@ -235,17 +237,15 @@ const MonthCalendar = () => {
                                     }}
                                 >
                                     {/* Número do dia */}
-                                    const isToday = todayFlag && !selFlag
-
                                         <span
                                         className="text-xs font-black w-6 h-6 flex items-center justify-center rounded-lg mb-1"
                                         style={{
-                                            background: isToday
+                                            background: isTodayHighlight
                                             ? '#818cf8'
                                             : selFlag
                                             ? 'rgba(255,255,255,0.2)'
                                             : 'transparent',
-                                            color: isToday
+                                            color: isTodayHighlight
                                             ? 'white'
                                             : selFlag
                                             ? 'white'
