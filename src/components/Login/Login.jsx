@@ -33,7 +33,7 @@ const Login = ({ onLoginSuccess }) => {
         matricula: '', curso: '', siape: '', departamento: '',
     })
 
-    // ── Login ──────────────────────────────────────────────────────────
+    // ── Login ──
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError('')
@@ -81,7 +81,7 @@ const Login = ({ onLoginSuccess }) => {
         }
     }
 
-    // ── Cadastro ───────────────────────────────────────────────────────
+    // ── Cadastro ──
     const handleRegisterChange = (e) => {
         setRegisterData({ ...registerData, [e.target.name]: e.target.value })
         setError('')
@@ -325,12 +325,16 @@ const Login = ({ onLoginSuccess }) => {
                                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
                                     onFocus={e => e.target.style.borderColor = accentColor}
                                     onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
-                                {activeRole === 'aluno' && (
-                                    <p className="text-[11px] text-amber-600 mt-1 ml-1">
+                            </div>
+                                {activeRole === 'aluno' ? (
+                                    <p className="text-[11px] text-purple-600 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 -mt-1">
                                         ⚠️ Apenas e-mails <span className="font-bold">@aluno.uepa.br</span> são aceitos para alunos.
                                     </p>
+                                ):(
+                                     <p className="text-[11px] text-purple-600 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 -mt-1">
+                                        ⚠️ Apenas e-mails <span className="font-bold">@uepa.br</span> são aceitos para professores.
+                                    </p>
                                 )}
-                            </div>
 
                             {/* Campos específicos por papel */}
                             {activeRole === 'aluno' && (
@@ -376,12 +380,18 @@ const Login = ({ onLoginSuccess }) => {
                             {/* Senha */}
                             <div className="relative">
                                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input type={showRegisterPassword ? 'text' : 'password'} name="password"
-                                    value={registerData.password} onChange={handleRegisterChange}
-                                    placeholder="Senha (mín. 6 caracteres)" required
-                                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
+                                <input
+                                    type={showRegisterPassword ? 'text' : 'password'}
+                                    name="password"
+                                    value={registerData.password}
+                                    onChange={handleRegisterChange}
+                                    placeholder="Senha (mín. 6 caracteres)"
+                                    required
+                                    autoComplete="new-password"
+                                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
                                     onFocus={e => e.target.style.borderColor = accentColor}
-                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
+                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                                />
                                 <button type="button" onClick={() => setShowRegisterPassword(p => !p)}
                                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                     {showRegisterPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -391,12 +401,18 @@ const Login = ({ onLoginSuccess }) => {
                             {/* Confirmar senha */}
                             <div className="relative">
                                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword"
-                                    value={registerData.confirmPassword} onChange={handleRegisterChange}
-                                    placeholder="Confirmar senha" required
-                                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
+                                <input
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    name="confirmPassword"
+                                    value={registerData.confirmPassword}
+                                    onChange={handleRegisterChange}
+                                    placeholder="Confirmar senha"
+                                    required
+                                    autoComplete="new-password"
+                                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
                                     onFocus={e => e.target.style.borderColor = accentColor}
-                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
+                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                                />
                                 <button type="button" onClick={() => setShowConfirmPassword(p => !p)}
                                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                     {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
