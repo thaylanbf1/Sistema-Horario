@@ -12,6 +12,7 @@ import ScheduleViiew from '../Schedule/ScheduleViiew'
 import DataManager from './DataManager'
 import MonthCalendar from '../Calendar/MonthCalendar'
 import ImportarPlanilha from './ImportarPlanilha'
+import MapaOcupacao from '../MapaOcupacao/MapaOcupacao'
 
 const STATUS_STYLES = {
     pendente: { label: 'Pendente', bg: '#fef9c3', color: '#ca8a04', dot: '#eab308', border: '#fde68a' },
@@ -172,6 +173,7 @@ const AdminPainel = () => {
         { key: 'horarios',     label: 'Horários',     Icon: LayoutGrid,    badge: null },
         { key: 'solicitacoes', label: 'Solicitações',  Icon: ClipboardList, badge: pendentes > 0 ? pendentes : null },
         { key: 'calendario',   label: 'Calendário',   Icon: Calendar,      badge: null },
+        { key: 'mapa',         label: 'Grade',          Icon: Calendar,      badge: null },
         { key: 'cadastros',    label: 'Cadastros',    Icon: Database,      badge: null },
         { key: 'usuarios',     label: 'Usuários',     Icon: Users,         badge: pendentesUsuarios > 0 ? pendentesUsuarios : null },
     ]
@@ -300,6 +302,10 @@ const AdminPainel = () => {
 
             {/* Conteúdo */}
             <div className="p-8">
+            {/* ════ MAPA DE OCUPAÇÃO ════ */}
+    {activeTab === 'mapa' && (
+        <MapaOcupacao />
+    )}
 
                 {/* ════ HORÁRIOS ════ */}
                 {activeTab === 'horarios' && (
