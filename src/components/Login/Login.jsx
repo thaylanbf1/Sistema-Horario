@@ -2,7 +2,7 @@ import { useState } from "react"
 import axios from 'axios'
 import {
     Shield, AlertCircle, User, Lock, Eye, EyeOff,
-    GraduationCap, BookOpen, Mail, UserPlus, ArrowLeft, CheckCircle2
+    GraduationCap, BookOpen, Mail, UserPlus, ArrowLeft, CheckCircle2, Phone
 } from 'lucide-react'
 import logo from '../../assets/logouepa.png'
 
@@ -29,7 +29,7 @@ const Login = ({ onLoginSuccess }) => {
     const [showConfirmPassword, setShowConfirmPassword]   = useState(false)
 
     const [registerData, setRegisterData] = useState({
-        nome: '', email: '', username: '', password: '', confirmPassword: '',
+        nome: '', email: '', telefone: '', username: '', password: '', confirmPassword: '',
         matricula: '', curso: '', siape: '', departamento: '',
     })
 
@@ -82,8 +82,18 @@ const Login = ({ onLoginSuccess }) => {
     }
 
     // ── Cadastro ──
+    const formatTelefone = (value) => {
+        const digits = value.replace(/\D/g, '').slice(0, 11)
+        if (digits.length <= 2)  return `(${digits}`
+        if (digits.length <= 6)  return `(${digits.slice(0,2)}) ${digits.slice(2)}`
+        if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`
+        return `(${digits.slice(0,2)}) ${digits.slice(2,3)} ${digits.slice(3,7)}-${digits.slice(7)}`
+    }
+
     const handleRegisterChange = (e) => {
-        setRegisterData({ ...registerData, [e.target.name]: e.target.value })
+        const { name, value } = e.target
+        const formatted = name === 'telefone' ? formatTelefone(value) : value
+        setRegisterData({ ...registerData, [name]: formatted })
         setError('')
     }
 
@@ -123,6 +133,7 @@ const Login = ({ onLoginSuccess }) => {
             await axios.post(`${API_URL}/usuario/cadastro`, {
                 nome:         registerData.nome,
                 email:        registerData.email,
+                telefone:     registerData.telefone,
                 username:     registerData.username,
                 senha:        registerData.password,
                 papel:        activeRole,
@@ -142,13 +153,13 @@ const Login = ({ onLoginSuccess }) => {
     const switchMode = (newMode) => {
         setMode(newMode); setError(''); setSuccess('')
         setFormData({ username: '', password: '' })
-        setRegisterData({ nome: '', email: '', username: '', password: '', confirmPassword: '', matricula: '', curso: '', siape: '', departamento: '' })
+        setRegisterData({ nome: '', email: '', telefone: '', username: '', password: '', confirmPassword: '', matricula: '', curso: '', siape: '', departamento: '' })
     }
 
     const switchRole = (role) => {
         setActiveRole(role); setError(''); setSuccess('')
         setFormData({ username: '', password: '' })
-        setRegisterData({ nome: '', email: '', username: '', password: '', confirmPassword: '', matricula: '', curso: '', siape: '', departamento: '' })
+        setRegisterData({ nome: '', email: '', telefone: '', username: '', password: '', confirmPassword: '', matricula: '', curso: '', siape: '', departamento: '' })
     }
 
     const cfg = roleConfig[activeRole]
@@ -335,6 +346,18 @@ const Login = ({ onLoginSuccess }) => {
                                         ⚠️ Apenas e-mails <span className="font-bold">@uepa.br</span> são aceitos para professores.
                                     </p>
                                 )}
+
+                                {/* Telefone */}
+                                <div className="relative">
+                                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input type="tel" name="telefone" value={registerData.telefone}
+                                    onChange={handleRegisterChange}
+                                    placeholder='(91) 9 XXXX-XXXX'
+                                    required
+                                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
+                                    onFocus={e => e.target.style.borderColor = accentColor}
+                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
+                            </div>
 
                             {/* Campos específicos por papel */}
                             {activeRole === 'aluno' && (
