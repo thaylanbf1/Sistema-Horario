@@ -203,6 +203,7 @@ const AdminPainel = () => {
                             </span>
                         </div>
                         <p className="text-xs text-gray-500">@{u.username} · {u.email}</p>
+                        {u.telefone  && <p className="text-xs text-gray-400 mt-0.5">{u.telefone}</p>}
                         {u.matricula && <p className="text-xs text-gray-400 mt-0.5">Matrícula: {u.matricula} · Curso: {u.curso}</p>}
                         {u.siape     && <p className="text-xs text-gray-400 mt-0.5">SIAPE: {u.siape} · Depto: {u.departamento}</p>}
                     </div>
@@ -519,6 +520,7 @@ const AdminPainel = () => {
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-gray-500">@{u.username} · {u.email}</p>
+                                                        {u.telefone  && <p className="text-xs text-gray-400 mt-0.5">{u.telefone}</p>}
                                                         {u.matricula && <p className="text-xs text-gray-400 mt-0.5">Matrícula: {u.matricula} · Curso: {u.curso}</p>}
                                                         {u.siape     && <p className="text-xs text-gray-400 mt-0.5">SIAPE: {u.siape} · Depto: {u.departamento}</p>}
                                                     </div>
@@ -573,6 +575,7 @@ const AdminPainel = () => {
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-gray-500">@{u.username} · {u.email}</p>
+                                                        {u.telefone  && <p className="text-xs text-gray-400 mt-0.5">{u.telefone}</p>}
                                                         {u.matricula && <p className="text-xs text-gray-400 mt-0.5">Matrícula: {u.matricula} · Curso: {u.curso}</p>}
                                                         {u.siape     && <p className="text-xs text-gray-400 mt-0.5">SIAPE: {u.siape} · Depto: {u.departamento}</p>}
                                                     </div>
@@ -626,6 +629,7 @@ const AdminPainel = () => {
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-gray-400">@{u.username} · {u.email}</p>
+                                                        {u.telefone  && <p className="text-xs text-gray-400 mt-0.5">{u.telefone}</p>}
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 shrink-0 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
