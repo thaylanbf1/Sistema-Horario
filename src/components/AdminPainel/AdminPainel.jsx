@@ -266,7 +266,7 @@ const AdminPainel = () => {
                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5"
                             style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>
                             <FileSpreadsheet size={16} />
-                            Planilha
+                                Relatórios
                         </button>
                         {activeTab === 'horarios' && (
                             <button onClick={() => setShowForm(true)} disabled={showForm}

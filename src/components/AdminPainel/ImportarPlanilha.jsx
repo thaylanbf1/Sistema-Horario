@@ -4,7 +4,7 @@ import axios from 'axios'
 import {
     Upload, Download, X, CheckCircle2, AlertCircle,
     FileSpreadsheet, Users, Building2, BookOpen, GraduationCap,
-    ChevronRight, Loader2, FileDown
+    ChevronRight, Loader2, FileDown, History, UserCheck
 } from 'lucide-react'
 
 const API_URL = 'http://localhost:3000'
@@ -71,43 +71,6 @@ const baixarModelo = () => {
     XLSX.writeFile(wb, 'modelo-importacao-sca-uepa.xlsx')
 }
 
-// ─── Exporta dados atuais do banco ───────────────────────────────────
-const exportarDados = async () => {
-    try {
-        const [resProfs, resDiscs, resCursos, resSalas] = await Promise.all([
-            axios.get(`${API_URL}/professor/all`),
-            axios.get(`${API_URL}/disciplina/all`),
-            axios.get(`${API_URL}/curso/all`),
-            axios.get(`${API_URL}/sala/all`),
-        ])
-
-        const wb = XLSX.utils.book_new()
-
-        const professores = resProfs.data.map(p => ({ Nome: p.nomeProf, Email: p.emailProf, Matricula: p.matriculaProf }))
-        const disciplinas = resDiscs.data.map(d => ({ Nome: d.nomeDisciplina, Codigo: d.matriculaDisciplina }))
-        const cursos      = resCursos.data.map(c => ({ Nome: c.nomeCurso, Sigla: c.siglaCurso, Cor: c.corCurso }))
-        const salas       = resSalas.data.map(s => ({ Nome: s.nomeSala, Tipo: s.tipoSala === 'laboratorio' ? 'Laboratório' : 'Sala de Aula' }))
-
-        const addSheet = (data, nome) => {
-            const ws = data.length > 0
-                ? XLSX.utils.json_to_sheet(data)
-                : XLSX.utils.aoa_to_sheet([Object.keys(data[0] || { Nome: '', Email: '' })])
-            ws['!cols'] = [{ wch: 30 }, { wch: 25 }, { wch: 15 }]
-            XLSX.utils.book_append_sheet(wb, ws, nome)
-        }
-
-        addSheet(professores, 'Professores')
-        addSheet(disciplinas, 'Disciplinas')
-        addSheet(cursos,      'Cursos')
-        addSheet(salas,       'Salas')
-
-        const data = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-        XLSX.writeFile(wb, `dados-sca-uepa-${data}.xlsx`)
-    } catch (err) {
-        alert('Erro ao exportar dados. Verifique se o servidor está rodando.')
-    }
-}
-
 // ─── Componente principal ─────────────────────────────────────────────
 const ImportarPlanilha = ({ onClose, onImportado }) => {
     const inputRef = useRef(null)
@@ -116,7 +79,7 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
     const [errosPreview, setErrosPreview] = useState({})
     const [resultado, setResultado] = useState({})
     const [nomeArquivo, setNomeArquivo] = useState('')
-    const [exportando, setExportando] = useState(false)
+    const [exportando, setExportando] = useState(null) // null ou string do tipo exportado
 
     const handleArquivo = (e) => {
         const file = e.target.files[0]
@@ -145,7 +108,7 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
             setErrosPreview(erros)
             setEtapa('preview')
         }
-        reader.readAsBinaryString(file)
+        reader.readAsArrayBuffer(file)
     }
 
     const handleImportar = async () => {
@@ -165,10 +128,70 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
         if (onImportado) onImportado()
     }
 
-    const handleExportar = async () => {
-        setExportando(true)
-        await exportarDados()
-        setExportando(false)
+    // ─── Lógica de Exportação Dinâmica de Relatórios ───────────────────
+    const gerarRelatorio = async (tipo) => {
+        setExportando(tipo)
+        try {
+            const wb = XLSX.utils.book_new()
+            
+            // Helper para adicionar aba com tamanho de colunas padronizado
+            const addSheet = (data, nome) => {
+                const ws = data.length > 0
+                    ? XLSX.utils.json_to_sheet(data)
+                    : XLSX.utils.aoa_to_sheet([Object.keys(data[0] || { Informação: 'Nenhum dado encontrado' })])
+                ws['!cols'] = [{ wch: 30 }, { wch: 25 }, { wch: 20 }, { wch: 20 }]
+                XLSX.utils.book_append_sheet(wb, ws, nome)
+            }
+
+            if (tipo === 'cadastros') {
+                const [resProfs, resDiscs, resCursos, resSalas] = await Promise.all([
+                    axios.get(`${API_URL}/professor/all`),
+                    axios.get(`${API_URL}/disciplina/all`),
+                    axios.get(`${API_URL}/curso/all`),
+                    axios.get(`${API_URL}/sala/all`),
+                ])
+                const professores = resProfs.data.map(p => ({ Nome: p.nomeProf, Email: p.emailProf, Matricula: p.matriculaProf }))
+                const disciplinas = resDiscs.data.map(d => ({ Nome: d.nomeDisciplina, Codigo: d.matriculaDisciplina }))
+                const cursos      = resCursos.data.map(c => ({ Nome: c.nomeCurso, Sigla: c.siglaCurso, Cor: c.corCurso }))
+                const salas       = resSalas.data.map(s => ({ Nome: s.nomeSala, Tipo: s.tipoSala === 'laboratorio' ? 'Laboratório' : 'Sala de Aula' }))
+
+                addSheet(professores, 'Professores')
+                addSheet(disciplinas, 'Disciplinas')
+                addSheet(cursos, 'Cursos')
+                addSheet(salas, 'Salas')
+            } 
+            else if (tipo === 'usuarios') {
+                // Endpoint presumido para usuários (Ajuste conforme seu backend)
+                const res = await axios.get(`${API_URL}/usuario/all`)
+                const usuarios = res.data.map(u => ({ 
+                    Nome: u.nome, 
+                    Email: u.email, 
+                    Papel: u.role || 'Usuário',
+                    Status: u.ativo ? 'Ativo' : 'Inativo'
+                }))
+                addSheet(usuarios, 'Usuários do Sistema')
+            }
+            else if (tipo === 'horarios') {
+                // Endpoint presumido para histórico de horários (Ajuste conforme seu backend)
+                const res = await axios.get(`${API_URL}/horario/historico`)
+                const horarios = res.data.map(h => ({ 
+                    Data: h.data, 
+                    Horário: h.periodo,
+                    Professor: h.professor, 
+                    Disciplina: h.disciplina, 
+                    Sala: h.sala 
+                }))
+                addSheet(horarios, 'Histórico de Horários')
+            }
+
+            const dataStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
+            XLSX.writeFile(wb, `relatorio-${tipo}-sca-uepa-${dataStr}.xlsx`)
+        } catch (err) {
+            console.error(err)
+            alert(`Erro ao exportar relatório de ${tipo}. Verifique se o servidor está rodando e a rota existe.`)
+        } finally {
+            setExportando(null)
+        }
     }
 
     const totalLinhas = Object.values(dadosPreview).reduce((acc, rows) => acc + rows.length, 0)
@@ -187,8 +210,8 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                             <FileSpreadsheet size={18} className="text-white" />
                         </div>
                         <div>
-                            <h2 className="text-base font-black text-white leading-none">Planilha de dados</h2>
-                            <p className="text-blue-200 text-xs mt-0.5">Importe ou exporte professores, salas, disciplinas e cursos</p>
+                            <h2 className="text-base font-black text-white leading-none">Dados & Relatórios</h2>
+                            <p className="text-blue-200 text-xs mt-0.5">Importe ou exporte planilhas e relatórios do sistema</p>
                         </div>
                     </div>
                     <button onClick={onClose}
@@ -198,92 +221,94 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                 </div>
 
                 {/* Conteúdo */}
-                <div className="overflow-y-auto flex-1 p-6 space-y-4">
+                <div className="overflow-y-auto flex-1 p-6 space-y-6">
 
                     {/* ── INÍCIO ── */}
                     {etapa === 'inicio' && (
                         <>
-                            {/* Exportar dados atuais */}
+                            {/* Relatórios */}
                             <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Exportar dados do sistema</p>
-                                <button onClick={handleExportar} disabled={exportando}
-                                    className="w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 border-green-200 bg-green-50 hover:border-green-400 hover:bg-green-100 transition-all group disabled:opacity-60">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-green-100 group-hover:bg-green-200 flex items-center justify-center transition-colors">
-                                            {exportando
-                                                ? <Loader2 size={18} className="text-green-600 animate-spin" />
-                                                : <FileDown size={18} className="text-green-600" />
-                                            }
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Gerar Relatórios</p>
+                                <div className="space-y-2">
+                                    {/* Opção 1: Cadastros Base */}
+                                    <button onClick={() => gerarRelatorio('cadastros')} disabled={exportando !== null}
+                                        className="w-full flex items-center justify-between px-5 py-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 hover:border-emerald-400 hover:bg-emerald-100 transition-all group disabled:opacity-60">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors">
+                                                {exportando === 'cadastros' ? <Loader2 size={16} className="text-emerald-600 animate-spin" /> : <FileDown size={16} className="text-emerald-600" />}
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-sm font-bold text-emerald-900">Cadastros Base</p>
+                                                <p className="text-xs text-emerald-600">Professores, Disciplinas, Cursos e Salas</p>
+                                            </div>
                                         </div>
-                                        <div className="text-left">
-                                            <p className="text-sm font-bold text-green-800">Baixar dados atuais em planilha</p>
-                                            <p className="text-xs text-green-500">Exporta todos os dados cadastrados no sistema</p>
+                                        <ChevronRight size={16} className="text-emerald-400 group-hover:text-emerald-600" />
+                                    </button>
+
+                                    {/* Opção 2: Usuários */}
+                                    <button onClick={() => gerarRelatorio('usuarios')} disabled={exportando !== null}
+                                        className="w-full flex items-center justify-between px-5 py-3 rounded-xl border-2 border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100 transition-all group disabled:opacity-60">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
+                                                {exportando === 'usuarios' ? <Loader2 size={16} className="text-blue-600 animate-spin" /> : <UserCheck size={16} className="text-blue-600" />}
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-sm font-bold text-blue-900">Usuários do Sistema</p>
+                                                <p className="text-xs text-blue-600">Contas, permissões e status dos usuários</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <ChevronRight size={16} className="text-green-400 group-hover:text-green-600" />
-                                </button>
+                                        <ChevronRight size={16} className="text-blue-400 group-hover:text-blue-600" />
+                                    </button>
+
+                                    {/* Opção 3: Histórico de Horários */}
+                                    <button onClick={() => gerarRelatorio('horarios')} disabled={exportando !== null}
+                                        className="w-full flex items-center justify-between px-5 py-3 rounded-xl border-2 border-purple-200 bg-purple-50 hover:border-purple-400 hover:bg-purple-100 transition-all group disabled:opacity-60">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-xl bg-purple-100 group-hover:bg-purple-200 flex items-center justify-center transition-colors">
+                                                {exportando === 'horarios' ? <Loader2 size={16} className="text-purple-600 animate-spin" /> : <History size={16} className="text-purple-600" />}
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-sm font-bold text-purple-900">Histórico de Horários</p>
+                                                <p className="text-xs text-purple-600">Alocações anteriores e reservas passadas</p>
+                                            </div>
+                                        </div>
+                                        <ChevronRight size={16} className="text-purple-400 group-hover:text-purple-600" />
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 my-2">
                                 <div className="flex-1 h-px bg-gray-200" />
-                                <span className="text-xs text-gray-400 font-semibold">ou</span>
+                                <span className="text-xs text-gray-400 font-semibold">IMPORTAÇÃO</span>
                                 <div className="flex-1 h-px bg-gray-200" />
                             </div>
 
                             {/* Importar */}
                             <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Importar dados de planilha</p>
-
-                                {/* Instrução */}
-                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4">
-                                    <p className="text-sm font-bold text-blue-900 mb-2">Como importar?</p>
-                                    <ol className="text-xs text-blue-700 space-y-1.5">
-                                        {[
-                                            'Baixe o modelo de planilha abaixo',
-                                            'Preencha com os dados da sua instituição',
-                                            'Suba o arquivo aqui',
-                                            'Confirme e pronto!',
-                                        ].map((step, i) => (
-                                            <li key={i} className="flex items-center gap-2">
-                                                <span className="w-5 h-5 rounded-full bg-blue-200 text-blue-700 text-[10px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
-                                                {step}
-                                            </li>
-                                        ))}
-                                    </ol>
+                                <div className="flex justify-between items-center mb-3">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Subir dados de planilha</p>
+                                    <button onClick={baixarModelo} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1">
+                                        <Download size={12}/> Modelo.xlsx
+                                    </button>
                                 </div>
-
-                                {/* Baixar modelo */}
-                                <button onClick={baixarModelo}
-                                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl border-2 border-dashed border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-all group mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-gray-100 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
-                                            <Download size={16} className="text-gray-500 group-hover:text-indigo-600" />
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="text-sm font-bold text-gray-700 group-hover:text-indigo-700">Baixar planilha modelo</p>
-                                            <p className="text-xs text-gray-400">Com exemplos e formato correto</p>
-                                        </div>
-                                    </div>
-                                    <ChevronRight size={16} className="text-gray-400 group-hover:text-indigo-500" />
-                                </button>
 
                                 {/* Upload */}
                                 <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleArquivo} />
                                 <button onClick={() => inputRef.current.click()}
-                                    className="w-full flex flex-col items-center justify-center gap-3 px-5 py-7 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50 hover:border-indigo-500 hover:bg-indigo-100 transition-all">
+                                    className="w-full flex flex-col items-center justify-center gap-3 px-5 py-7 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50/50 hover:border-indigo-500 hover:bg-indigo-50 transition-all">
                                     <div className="w-11 h-11 rounded-2xl bg-indigo-100 flex items-center justify-center">
                                         <Upload size={20} className="text-indigo-600" />
                                     </div>
                                     <div className="text-center">
                                         <p className="text-sm font-bold text-indigo-800">Clique para escolher o arquivo</p>
-                                        <p className="text-xs text-indigo-400 mt-0.5">Aceita .xlsx, .xls ou .csv</p>
+                                        <p className="text-xs text-indigo-400 mt-0.5">Aceita .xlsx, .xls ou .csv com as abas padrão</p>
                                     </div>
                                 </button>
                             </div>
                         </>
                     )}
 
-                    {/* ── PREVIEW ── */}
+                    {/* ── PREVIEW (Inalterado) ── */}
                     {etapa === 'preview' && (
                         <>
                             <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
@@ -342,7 +367,7 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                         </>
                     )}
 
-                    {/* ── IMPORTANDO ── */}
+                    {/* ── IMPORTANDO (Inalterado) ── */}
                     {etapa === 'importando' && (
                         <div className="flex flex-col items-center justify-center py-12 gap-4">
                             <Loader2 size={40} className="animate-spin text-indigo-500" />
@@ -351,7 +376,7 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                         </div>
                     )}
 
-                    {/* ── RESULTADO ── */}
+                    {/* ── RESULTADO (Inalterado) ── */}
                     {etapa === 'resultado' && (
                         <>
                             <div className="text-center py-4">
