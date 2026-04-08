@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import axios from 'axios'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import {
     Upload, Download, X, CheckCircle2, AlertCircle,
     FileSpreadsheet, Users, Building2, BookOpen, GraduationCap,
-    ChevronRight, Loader2, FileDown, History, UserCheck
+    ChevronRight, Loader2, FileDown, History, UserCheck, FileText
 } from 'lucide-react'
 
 const API_URL = 'http://localhost:3000'
@@ -79,15 +81,20 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
     const [errosPreview, setErrosPreview] = useState({})
     const [resultado, setResultado] = useState({})
     const [nomeArquivo, setNomeArquivo] = useState('')
-    const [exportando, setExportando] = useState(null) // null ou string do tipo exportado
+    
+    // Novos estados para controle de exportação
+    const [exportando, setExportando] = useState(null) 
+    const [formatoDownload, setFormatoDownload] = useState('excel') // 'excel' | 'pdf'
 
     const handleArquivo = (e) => {
         const file = e.target.files[0]
         if (!file) return
         setNomeArquivo(file.name)
         const reader = new FileReader()
+        
+        // Usando readAsArrayBuffer conforme correção anterior
         reader.onload = (evt) => {
-            const wb = XLSX.read(evt.target.result, { type: 'binary' })
+            const wb = XLSX.read(evt.target.result, { type: 'array' })
             const preview = {}
             const erros = {}
             Object.keys(ABAS_CONFIG).forEach(abaEsperada => {
@@ -128,21 +135,14 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
         if (onImportado) onImportado()
     }
 
-    // ─── Lógica de Exportação Dinâmica de Relatórios ───────────────────
+    // ─── Lógica de Exportação Dinâmica (Excel e PDF) ───────────────────
     const gerarRelatorio = async (tipo) => {
         setExportando(tipo)
         try {
-            const wb = XLSX.utils.book_new()
-            
-            // Helper para adicionar aba com tamanho de colunas padronizado
-            const addSheet = (data, nome) => {
-                const ws = data.length > 0
-                    ? XLSX.utils.json_to_sheet(data)
-                    : XLSX.utils.aoa_to_sheet([Object.keys(data[0] || { Informação: 'Nenhum dado encontrado' })])
-                ws['!cols'] = [{ wch: 30 }, { wch: 25 }, { wch: 20 }, { wch: 20 }]
-                XLSX.utils.book_append_sheet(wb, ws, nome)
-            }
+            const dataStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
+            const conjuntosDeDados = [] // Array para guardar os blocos de dados antes de renderizar
 
+            // 1. Busca e formatação dos dados
             if (tipo === 'cadastros') {
                 const [resProfs, resDiscs, resCursos, resSalas] = await Promise.all([
                     axios.get(`${API_URL}/professor/all`),
@@ -150,45 +150,94 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                     axios.get(`${API_URL}/curso/all`),
                     axios.get(`${API_URL}/sala/all`),
                 ])
-                const professores = resProfs.data.map(p => ({ Nome: p.nomeProf, Email: p.emailProf, Matricula: p.matriculaProf }))
-                const disciplinas = resDiscs.data.map(d => ({ Nome: d.nomeDisciplina, Codigo: d.matriculaDisciplina }))
-                const cursos      = resCursos.data.map(c => ({ Nome: c.nomeCurso, Sigla: c.siglaCurso, Cor: c.corCurso }))
-                const salas       = resSalas.data.map(s => ({ Nome: s.nomeSala, Tipo: s.tipoSala === 'laboratorio' ? 'Laboratório' : 'Sala de Aula' }))
-
-                addSheet(professores, 'Professores')
-                addSheet(disciplinas, 'Disciplinas')
-                addSheet(cursos, 'Cursos')
-                addSheet(salas, 'Salas')
+                conjuntosDeDados.push({
+                    titulo: 'Professores',
+                    colunas: ['Nome', 'Email', 'Matrícula'],
+                    linhas: resProfs.data.map(p => ({ Nome: p.nomeProf, Email: p.emailProf, Matricula: p.matriculaProf }))
+                })
+                conjuntosDeDados.push({
+                    titulo: 'Disciplinas',
+                    colunas: ['Nome', 'Código'],
+                    linhas: resDiscs.data.map(d => ({ Nome: d.nomeDisciplina, Codigo: d.matriculaDisciplina }))
+                })
+                conjuntosDeDados.push({
+                    titulo: 'Cursos',
+                    colunas: ['Nome', 'Sigla', 'Cor'],
+                    linhas: resCursos.data.map(c => ({ Nome: c.nomeCurso, Sigla: c.siglaCurso, Cor: c.corCurso }))
+                })
+                conjuntosDeDados.push({
+                    titulo: 'Salas',
+                    colunas: ['Nome', 'Tipo'],
+                    linhas: resSalas.data.map(s => ({ Nome: s.nomeSala, Tipo: s.tipoSala === 'laboratorio' ? 'Laboratório' : 'Sala de Aula' }))
+                })
             } 
             else if (tipo === 'usuarios') {
-                // Endpoint presumido para usuários (Ajuste conforme seu backend)
                 const res = await axios.get(`${API_URL}/usuario/all`)
-                const usuarios = res.data.map(u => ({ 
-                    Nome: u.nome, 
-                    Email: u.email, 
-                    Papel: u.role || 'Usuário',
-                    Status: u.ativo ? 'Ativo' : 'Inativo'
-                }))
-                addSheet(usuarios, 'Usuários do Sistema')
+                conjuntosDeDados.push({
+                    titulo: 'Usuários do Sistema',
+                    colunas: ['Nome', 'Email', 'Papel', 'Status'],
+                    linhas: res.data.map(u => ({ Nome: u.nome, Email: u.email, Papel: u.role || 'Usuário', Status: u.ativo ? 'Ativo' : 'Inativo' }))
+                })
             }
             else if (tipo === 'horarios') {
-                // Endpoint presumido para histórico de horários (Ajuste conforme seu backend)
                 const res = await axios.get(`${API_URL}/horario/historico`)
-                const horarios = res.data.map(h => ({ 
-                    Data: h.data, 
-                    Horário: h.periodo,
-                    Professor: h.professor, 
-                    Disciplina: h.disciplina, 
-                    Sala: h.sala 
-                }))
-                addSheet(horarios, 'Histórico de Horários')
+                conjuntosDeDados.push({
+                    titulo: 'Histórico de Horários',
+                    colunas: ['Data', 'Horário', 'Professor', 'Disciplina', 'Sala'],
+                    linhas: res.data.map(h => ({ Data: h.data, Horário: h.periodo, Professor: h.professor, Disciplina: h.disciplina, Sala: h.sala }))
+                })
             }
 
-            const dataStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-            XLSX.writeFile(wb, `relatorio-${tipo}-sca-uepa-${dataStr}.xlsx`)
+            // 2. Geração do Arquivo de acordo com o formato escolhido
+            if (formatoDownload === 'excel') {
+                const wb = XLSX.utils.book_new()
+                conjuntosDeDados.forEach(conjunto => {
+                    const ws = conjunto.linhas.length > 0
+                        ? XLSX.utils.json_to_sheet(conjunto.linhas)
+                        : XLSX.utils.aoa_to_sheet([conjunto.colunas])
+                    ws['!cols'] = conjunto.colunas.map(() => ({ wch: 25 })) // Largura padrão
+                    XLSX.utils.book_append_sheet(wb, ws, conjunto.titulo.substring(0, 31)) // Limite de 31 chars por aba
+                })
+                XLSX.writeFile(wb, `relatorio-${tipo}-sca-uepa-${dataStr}.xlsx`)
+            } 
+            else if (formatoDownload === 'pdf') {
+                const doc = new jsPDF()
+                let yAtual = 15
+
+                doc.setFontSize(16)
+                doc.text(`Relatório do Sistema - ${dataStr}`, 14, yAtual)
+                yAtual += 10
+
+                conjuntosDeDados.forEach((conjunto, index) => {
+                    if (index > 0 && yAtual > 250) { // Quebra de página se estiver no fim
+                        doc.addPage()
+                        yAtual = 20
+                    }
+
+                    doc.setFontSize(12)
+                    doc.text(conjunto.titulo, 14, yAtual)
+                    
+                    const linhasFormatoArray = conjunto.linhas.map(linha => Object.values(linha))
+                    
+                    autoTable(doc, {
+                        head: [conjunto.colunas],
+                        body: linhasFormatoArray.length > 0 ? linhasFormatoArray : [['Nenhum registro encontrado']],
+                        startY: yAtual + 3,
+                        theme: 'grid',
+                        styles: { fontSize: 9, cellPadding: 3 },
+                        headStyles: { fillColor: [28, 26, 163] }, // Cor azul do header
+                        margin: { top: 15 }
+                    })
+                    
+                    yAtual = doc.lastAutoTable.finalY + 15 // Atualiza a posição Y para a próxima tabela
+                })
+
+                doc.save(`relatorio-${tipo}-sca-uepa-${dataStr}.pdf`)
+            }
+
         } catch (err) {
             console.error(err)
-            alert(`Erro ao exportar relatório de ${tipo}. Verifique se o servidor está rodando e a rota existe.`)
+            alert(`Erro ao exportar relatório. Verifique se o servidor está rodando.`)
         } finally {
             setExportando(null)
         }
@@ -211,7 +260,7 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                         </div>
                         <div>
                             <h2 className="text-base font-black text-white leading-none">Dados & Relatórios</h2>
-                            <p className="text-blue-200 text-xs mt-0.5">Importe ou exporte planilhas e relatórios do sistema</p>
+                            <p className="text-blue-200 text-xs mt-0.5">Importe ou exporte dados do sistema</p>
                         </div>
                     </div>
                     <button onClick={onClose}
@@ -223,12 +272,28 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                 {/* Conteúdo */}
                 <div className="overflow-y-auto flex-1 p-6 space-y-6">
 
-                    {/* ── INÍCIO ── */}
                     {etapa === 'inicio' && (
                         <>
                             {/* Relatórios */}
                             <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Gerar Relatórios</p>
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Gerar Relatórios</p>
+                                    
+                                    {/* Seletor de Formato */}
+                                    <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                                        <button 
+                                            onClick={() => setFormatoDownload('excel')}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${formatoDownload === 'excel' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                                            <FileSpreadsheet size={14} /> Excel
+                                        </button>
+                                        <button 
+                                            onClick={() => setFormatoDownload('pdf')}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${formatoDownload === 'pdf' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                                            <FileText size={14} /> PDF
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="space-y-2">
                                     {/* Opção 1: Cadastros Base */}
                                     <button onClick={() => gerarRelatorio('cadastros')} disabled={exportando !== null}
@@ -292,7 +357,6 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                                     </button>
                                 </div>
 
-                                {/* Upload */}
                                 <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleArquivo} />
                                 <button onClick={() => inputRef.current.click()}
                                     className="w-full flex flex-col items-center justify-center gap-3 px-5 py-7 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50/50 hover:border-indigo-500 hover:bg-indigo-50 transition-all">
@@ -308,66 +372,66 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                         </>
                     )}
 
-                    {/* ── PREVIEW (Inalterado) ── */}
+                    {/* ── PREVIEW ── */}
                     {etapa === 'preview' && (
-                        <>
-                            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                                <FileSpreadsheet size={15} className="text-gray-500 shrink-0" />
-                                <p className="text-xs text-gray-600 font-semibold truncate flex-1">{nomeArquivo}</p>
-                                <button onClick={() => { setEtapa('inicio'); setDadosPreview({}); setErrosPreview({}) }}
-                                    className="text-xs text-indigo-500 hover:underline shrink-0">Trocar</button>
-                            </div>
+                         <>
+                         <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                             <FileSpreadsheet size={15} className="text-gray-500 shrink-0" />
+                             <p className="text-xs text-gray-600 font-semibold truncate flex-1">{nomeArquivo}</p>
+                             <button onClick={() => { setEtapa('inicio'); setDadosPreview({}); setErrosPreview({}) }}
+                                 className="text-xs text-indigo-500 hover:underline shrink-0">Trocar</button>
+                         </div>
 
-                            {Object.entries(ABAS_CONFIG).map(([aba, cfg]) => {
-                                const rows = dadosPreview[aba]
-                                const erros = errosPreview[aba]
-                                if (!rows) return null
-                                const Icon = cfg.icon
-                                return (
-                                    <div key={aba} className="rounded-xl border overflow-hidden"
-                                        style={{ borderColor: erros ? '#fecaca' : '#e5e7eb' }}>
-                                        <div className="flex items-center gap-3 px-4 py-3"
-                                            style={{ background: erros ? '#fef2f2' : cfg.colorBg + '60' }}>
-                                            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: cfg.colorBg }}>
-                                                <Icon size={14} style={{ color: cfg.color }} />
-                                            </div>
-                                            <span className="text-sm font-bold text-gray-800 flex-1">{aba}</span>
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                                                style={{ background: cfg.colorBg, color: cfg.color }}>
-                                                {rows.length} {rows.length === 1 ? 'registro' : 'registros'}
-                                            </span>
-                                        </div>
-                                        {erros && (
-                                            <div className="px-4 py-2 bg-red-50">
-                                                {erros.slice(0, 2).map((e, i) => (
-                                                    <p key={i} className="text-xs text-red-500 flex items-center gap-1">
-                                                        <AlertCircle size={11} className="shrink-0" />{e}
-                                                    </p>
-                                                ))}
-                                                {erros.length > 2 && <p className="text-xs text-red-400">+{erros.length - 2} outros erros</p>}
-                                            </div>
-                                        )}
-                                        <div className="px-4 py-2 divide-y divide-gray-50">
-                                            {rows.slice(0, 3).map((row, i) => (
-                                                <p key={i} className="text-xs text-gray-600 py-1 truncate">{cfg.label(row) || '—'}</p>
-                                            ))}
-                                            {rows.length > 3 && <p className="text-xs text-gray-400 py-1">+{rows.length - 3} mais...</p>}
-                                        </div>
-                                    </div>
-                                )
-                            })}
+                         {Object.entries(ABAS_CONFIG).map(([aba, cfg]) => {
+                             const rows = dadosPreview[aba]
+                             const erros = errosPreview[aba]
+                             if (!rows) return null
+                             const Icon = cfg.icon
+                             return (
+                                 <div key={aba} className="rounded-xl border overflow-hidden"
+                                     style={{ borderColor: erros ? '#fecaca' : '#e5e7eb' }}>
+                                     <div className="flex items-center gap-3 px-4 py-3"
+                                         style={{ background: erros ? '#fef2f2' : cfg.colorBg + '60' }}>
+                                         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: cfg.colorBg }}>
+                                             <Icon size={14} style={{ color: cfg.color }} />
+                                         </div>
+                                         <span className="text-sm font-bold text-gray-800 flex-1">{aba}</span>
+                                         <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                                             style={{ background: cfg.colorBg, color: cfg.color }}>
+                                             {rows.length} {rows.length === 1 ? 'registro' : 'registros'}
+                                         </span>
+                                     </div>
+                                     {erros && (
+                                         <div className="px-4 py-2 bg-red-50">
+                                             {erros.slice(0, 2).map((e, i) => (
+                                                 <p key={i} className="text-xs text-red-500 flex items-center gap-1">
+                                                     <AlertCircle size={11} className="shrink-0" />{e}
+                                                 </p>
+                                             ))}
+                                             {erros.length > 2 && <p className="text-xs text-red-400">+{erros.length - 2} outros erros</p>}
+                                         </div>
+                                     )}
+                                     <div className="px-4 py-2 divide-y divide-gray-50">
+                                         {rows.slice(0, 3).map((row, i) => (
+                                             <p key={i} className="text-xs text-gray-600 py-1 truncate">{cfg.label(row) || '—'}</p>
+                                         ))}
+                                         {rows.length > 3 && <p className="text-xs text-gray-400 py-1">+{rows.length - 3} mais...</p>}
+                                     </div>
+                                 </div>
+                             )
+                         })}
 
-                            {Object.keys(dadosPreview).length === 0 && (
-                                <div className="text-center py-8 text-gray-400">
-                                    <AlertCircle size={32} className="mx-auto mb-2 opacity-40" />
-                                    <p className="text-sm font-semibold">Nenhuma aba reconhecida</p>
-                                    <p className="text-xs mt-1">O arquivo deve ter abas: Professores, Disciplinas, Cursos, Salas</p>
-                                </div>
-                            )}
-                        </>
+                         {Object.keys(dadosPreview).length === 0 && (
+                             <div className="text-center py-8 text-gray-400">
+                                 <AlertCircle size={32} className="mx-auto mb-2 opacity-40" />
+                                 <p className="text-sm font-semibold">Nenhuma aba reconhecida</p>
+                                 <p className="text-xs mt-1">O arquivo deve ter abas: Professores, Disciplinas, Cursos, Salas</p>
+                             </div>
+                         )}
+                     </>
                     )}
 
-                    {/* ── IMPORTANDO (Inalterado) ── */}
+                    {/* ── IMPORTANDO ── */}
                     {etapa === 'importando' && (
                         <div className="flex flex-col items-center justify-center py-12 gap-4">
                             <Loader2 size={40} className="animate-spin text-indigo-500" />
@@ -376,36 +440,36 @@ const ImportarPlanilha = ({ onClose, onImportado }) => {
                         </div>
                     )}
 
-                    {/* ── RESULTADO (Inalterado) ── */}
+                    {/* ── RESULTADO ── */}
                     {etapa === 'resultado' && (
                         <>
-                            <div className="text-center py-4">
-                                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
-                                    style={{ background: 'linear-gradient(135deg,#1c1aa3,#7c3aed)' }}>
-                                    <CheckCircle2 size={28} className="text-white" />
-                                </div>
-                                <p className="text-lg font-black text-gray-900">Importação concluída!</p>
+                        <div className="text-center py-4">
+                            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
+                                style={{ background: 'linear-gradient(135deg,#1c1aa3,#7c3aed)' }}>
+                                <CheckCircle2 size={28} className="text-white" />
                             </div>
-                            {Object.entries(resultado).map(([aba, res]) => {
-                                const cfg = ABAS_CONFIG[aba]
-                                const Icon = cfg.icon
-                                return (
-                                    <div key={aba} className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50">
-                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: cfg.colorBg }}>
-                                            <Icon size={14} style={{ color: cfg.color }} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold text-gray-800">{aba}</p>
-                                            <p className="text-xs text-gray-500">{res.total} registros processados</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-black text-green-600">{res.ok} importados</p>
-                                            {res.erros > 0 && <p className="text-xs text-red-400">{res.erros} já existiam</p>}
-                                        </div>
+                            <p className="text-lg font-black text-gray-900">Importação concluída!</p>
+                        </div>
+                        {Object.entries(resultado).map(([aba, res]) => {
+                            const cfg = ABAS_CONFIG[aba]
+                            const Icon = cfg.icon
+                            return (
+                                <div key={aba} className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50">
+                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: cfg.colorBg }}>
+                                        <Icon size={14} style={{ color: cfg.color }} />
                                     </div>
-                                )
-                            })}
-                        </>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-bold text-gray-800">{aba}</p>
+                                        <p className="text-xs text-gray-500">{res.total} registros processados</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-black text-green-600">{res.ok} importados</p>
+                                        {res.erros > 0 && <p className="text-xs text-red-400">{res.erros} já existiam</p>}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </>
                     )}
                 </div>
 
