@@ -1,14 +1,14 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import axios from 'axios'
 import {
     Shield, AlertCircle, User, Lock, Eye, EyeOff,
-    GraduationCap, BookOpen, Mail, UserPlus, ArrowLeft, CheckCircle2, Phone
+    GraduationCap, BookOpen, Mail, UserPlus, ArrowLeft, CheckCircle2, Phone, ChevronDown
 } from 'lucide-react'
 import logo from '../../assets/logouepa.png'
 
 const API_URL = 'http://localhost:3000'
 
-// Admin ainda usa credenciais hardcoded (sem cadastro pelo sistema)
+// Admin usa credenciais hardcoded (sem cadastro pelo sistema)
 const ADMIN_CREDENTIALS = { username: 'admin', password: 'admin456' }
 
 const roleConfig = {
@@ -28,10 +28,28 @@ const Login = ({ onLoginSuccess }) => {
     const [showRegisterPassword, setShowRegisterPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword]   = useState(false)
 
+    // ESTADO PARA CARREGAR OS CURSOS DO BANCO
+    const [cursosDisponiveis, setCursosDisponiveis] = useState([])
+
     const [registerData, setRegisterData] = useState({
         nome: '', email: '', telefone: '', username: '', password: '', confirmPassword: '',
         matricula: '', curso: '', siape: '', departamento: '',
     })
+
+    // Efeito para carregar cursos quando entrar no modo registro
+    useEffect(() => {
+        if (mode === 'register') {
+            const carregarCursos = async () => {
+                try {
+                    const res = await axios.get(`${API_URL}/curso/all`)
+                    setCursosDisponiveis(res.data)
+                } catch (err) {
+                    console.error('Erro ao carregar cursos:', err)
+                }
+            }
+            carregarCursos()
+        }
+    }, [mode])
 
     // ── Login ──
     const handleSubmit = async (e) => {
@@ -40,7 +58,6 @@ const Login = ({ onLoginSuccess }) => {
         setLoading(true)
 
         try {
-            // Admin: ainda usa credencial local
             if (activeRole === 'admin') {
                 if (formData.username === ADMIN_CREDENTIALS.username &&
                     formData.password === ADMIN_CREDENTIALS.password) {
@@ -55,14 +72,12 @@ const Login = ({ onLoginSuccess }) => {
                 return
             }
 
-            // Aluno / Professor: autentica pelo banco
             const res = await axios.post(`${API_URL}/usuario/login`, {
                 username: formData.username,
                 senha:    formData.password,
             })
 
             const user = res.data
-            // Verifica se o papel bate com o perfil selecionado
             if (user.papel !== activeRole) {
                 setError(`Esta conta é do tipo ${roleConfig[user.papel]?.label || user.papel}, não ${roleConfig[activeRole].label}`)
                 return
@@ -108,11 +123,11 @@ const Login = ({ onLoginSuccess }) => {
             if (!email.toLowerCase().endsWith('@aluno.uepa.br'))
                 return 'O e-mail deve ser do domínio @aluno.uepa.br'
             if (!matricula.trim()) return 'Informe sua matrícula'
-            if (!curso.trim())     return 'Informe seu curso'
+            if (!curso.trim())     return 'Selecione seu curso'
         }
 
         if (activeRole === 'professor') {
-            if (!siape.trim())       return 'Informe o SIAPE'
+            if (!curso.trim())       return 'Selecione o curso'
             if (!departamento.trim()) return 'Informe seu departamento'
         }
 
@@ -181,7 +196,6 @@ const Login = ({ onLoginSuccess }) => {
             <div className="relative z-10 w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex"
                 style={{ minHeight: '520px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}>
 
-                {/* ── Formulário ── */}
                 <div className="flex-1 bg-white flex flex-col justify-center px-10 py-10 overflow-y-auto">
 
                     {/* Logo */}
@@ -200,12 +214,10 @@ const Login = ({ onLoginSuccess }) => {
                         {mode === 'register' ? 'Preencha os dados abaixo para se cadastrar' : 'Selecione seu perfil e faça login'}
                     </p>
 
-                    {/* Seletor de perfil */}
                     <div className="flex gap-2 mb-5">
                         {Object.entries(roleConfig).map(([key, c]) => {
                             const Icon = c.icon
                             const isActive = activeRole === key
-                            // Esconde admin no cadastro
                             if (mode === 'register' && key === 'admin') return null
                             return (
                                 <button key={key} type="button" onClick={() => switchRole(key)}
@@ -224,14 +236,12 @@ const Login = ({ onLoginSuccess }) => {
                         })}
                     </div>
 
-                    {/* Erro */}
                     {error && (
                         <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-xl mb-4 text-sm">
                             <AlertCircle size={16} /><span>{error}</span>
                         </div>
                     )}
 
-                    {/* Sucesso no cadastro */}
                     {success && (
                         <div className="flex flex-col items-center gap-4 py-4">
                             <div className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -247,7 +257,6 @@ const Login = ({ onLoginSuccess }) => {
                         </div>
                     )}
 
-                    {/* ── FORM LOGIN ── */}
                     {mode === 'login' && !success && (
                         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                             <div className="relative">
@@ -296,11 +305,7 @@ const Login = ({ onLoginSuccess }) => {
 
                             {activeRole !== 'admin' && (
                                 <p className="text-xs text-center text-gray-500">
-                                    Não tem conta?{' '}
-                                    <button type="button" onClick={() => switchMode('register')}
-                                        className="font-bold hover:underline" style={{ color: accentColor }}>
-                                        Cadastre-se
-                                    </button>
+                                    Não tem conta? <button type="button" onClick={() => switchMode('register')} className="font-bold hover:underline" style={{ color: accentColor }}>Cadastre-se</button>
                                 </p>
                             )}
 
@@ -315,8 +320,6 @@ const Login = ({ onLoginSuccess }) => {
                     {/* ── FORM CADASTRO ── */}
                     {mode === 'register' && !success && (
                         <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-3">
-
-                            {/* Nome */}
                             <div className="relative">
                                 <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input type="text" name="nome" value={registerData.nome}
@@ -326,34 +329,30 @@ const Login = ({ onLoginSuccess }) => {
                                     onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
                             </div>
 
-                            {/* Email */}
                             <div className="relative">
                                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input type="email" name="email" value={registerData.email}
                                     onChange={handleRegisterChange}
-                                    placeholder={activeRole === 'aluno' ? 'seunome@aluno.uepa.br' : 'seunome@uepa.br'}
-                                    required
+                                    placeholder={activeRole === 'aluno' ? 'seunome@aluno.uepa.br' : 'seunome@uepa.br'} required
                                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
                                     onFocus={e => e.target.style.borderColor = accentColor}
                                     onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
                             </div>
-                                {activeRole === 'aluno' ? (
-                                    <p className="text-[11px] text-purple-600 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 -mt-1">
-                                        ⚠️ Apenas e-mails <span className="font-bold">@aluno.uepa.br</span> são aceitos para alunos.
-                                    </p>
-                                ):(
-                                     <p className="text-[11px] text-purple-600 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 -mt-1">
-                                        ⚠️ Apenas e-mails <span className="font-bold">@uepa.br</span> são aceitos para professores.
-                                    </p>
-                                )}
 
-                                {/* Telefone */}
-                                <div className="relative">
+                            {activeRole === 'aluno' ? (
+                                <p className="text-[11px] text-purple-600 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 -mt-1">
+                                    ⚠️ Apenas e-mails <span className="font-bold">@aluno.uepa.br</span> são aceitos para alunos.
+                                </p>
+                            ):(
+                                <p className="text-[11px] text-purple-600 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 -mt-1">
+                                    ⚠️ Apenas e-mails <span className="font-bold">@uepa.br</span> são aceitos para professores.
+                                </p>
+                            )}
+
+                            <div className="relative">
                                 <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input type="tel" name="telefone" value={registerData.telefone}
-                                    onChange={handleRegisterChange}
-                                    placeholder='(91) 9 XXXX-XXXX'
-                                    required
+                                    onChange={handleRegisterChange} placeholder='(91) 9 XXXX-XXXX' required
                                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
                                     onFocus={e => e.target.style.borderColor = accentColor}
                                     onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
@@ -367,21 +366,36 @@ const Login = ({ onLoginSuccess }) => {
                                         className="px-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
                                         onFocus={e => e.target.style.borderColor = accentColor}
                                         onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
-                                    <input type="text" name="curso" value={registerData.curso}
-                                        onChange={handleRegisterChange} placeholder="Curso" required
-                                        className="px-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
-                                        onFocus={e => e.target.style.borderColor = accentColor}
-                                        onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
+                                    
+                                    <div className="relative">
+                                        <select name="curso" value={registerData.curso} onChange={handleRegisterChange} required
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all appearance-none">
+                                            <option value="">Selecione o Curso</option>
+                                            {cursosDisponiveis.map(curso => (
+                                                <option key={curso.id || curso.idCurso} value={curso.nome}>{curso.nome}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
+                                    </div>
                                 </div>
                             )}
 
                             {activeRole === 'professor' && (
                                 <div className="grid grid-cols-2 gap-3">
-                                    <input type="text" name="siape" value={registerData.siape}
-                                        onChange={handleRegisterChange} placeholder="SIAPE" required
-                                        className="px-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
-                                        onFocus={e => e.target.style.borderColor = accentColor}
-                                        onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
+                                    {/* SIAPE TROCADO POR SELECT DE CURSO */}
+                                    <div className="relative">
+                                        <select name="curso" value={registerData.curso} onChange={handleRegisterChange} required
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all appearance-none"
+                                            onFocus={e => e.target.style.borderColor = accentColor}
+                                            onBlur={e => e.target.style.borderColor = '#e5e7eb'}>
+                                            <option value="">Selecione o Curso</option>
+                                            {cursosDisponiveis.map(curso => (
+                                                <option key={curso.id || curso.idCurso} value={curso.nome}>{curso.nome}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
+                                    </div>
+
                                     <input type="text" name="departamento" value={registerData.departamento}
                                         onChange={handleRegisterChange} placeholder="Departamento" required
                                         className="px-4 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
@@ -390,7 +404,6 @@ const Login = ({ onLoginSuccess }) => {
                                 </div>
                             )}
 
-                            {/* Username */}
                             <div className="relative">
                                 <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input type="text" name="username" value={registerData.username}
@@ -400,65 +413,38 @@ const Login = ({ onLoginSuccess }) => {
                                     onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
                             </div>
 
-                            {/* Senha */}
                             <div className="relative">
                                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type={showRegisterPassword ? 'text' : 'password'}
-                                    name="password"
-                                    value={registerData.password}
-                                    onChange={handleRegisterChange}
-                                    placeholder="Senha (mín. 6 caracteres)"
-                                    required
-                                    autoComplete="new-password"
-                                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
+                                <input type={showRegisterPassword ? 'text' : 'password'} name="password"
+                                    value={registerData.password} onChange={handleRegisterChange}
+                                    placeholder="Senha (mín. 6 caracteres)" required
+                                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
                                     onFocus={e => e.target.style.borderColor = accentColor}
-                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                                />
+                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
                                 <button type="button" onClick={() => setShowRegisterPassword(p => !p)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
                                     {showRegisterPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
 
-                            {/* Confirmar senha */}
                             <div className="relative">
                                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type={showConfirmPassword ? 'text' : 'password'}
-                                    name="confirmPassword"
-                                    value={registerData.confirmPassword}
-                                    onChange={handleRegisterChange}
-                                    placeholder="Confirmar senha"
-                                    required
-                                    autoComplete="new-password"
-                                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
+                                <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword"
+                                    value={registerData.confirmPassword} onChange={handleRegisterChange}
+                                    placeholder="Confirmar senha" required
+                                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm bg-gray-50 focus:outline-none transition-all"
                                     onFocus={e => e.target.style.borderColor = accentColor}
-                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                                />
+                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
                                 <button type="button" onClick={() => setShowConfirmPassword(p => !p)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
                                     {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
 
                             <button type="submit" disabled={loading}
-                                className="cursor-pointer w-full py-3 rounded-xl font-bold text-white text-sm tracking-wide transition-all disabled:opacity-60 mt-1"
+                                className="cursor-pointer w-full py-3 rounded-xl font-bold text-white text-sm tracking-wide transition-all mt-1"
                                 style={{ background: `linear-gradient(135deg, ${accentColor}, #7c3aed)`, boxShadow: `0 8px 24px ${accentColor}50` }}>
-                                {loading ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                        </svg>
-                                        Cadastrando...
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <UserPlus size={16} />
-                                        Cadastrar como {cfg.label}
-                                    </span>
-                                )}
+                                {loading ? 'Cadastrando...' : `Cadastrar como ${cfg.label}`}
                             </button>
 
                             <button type="button" onClick={() => switchMode('login')}
@@ -482,49 +468,12 @@ const Login = ({ onLoginSuccess }) => {
                         </div>
 
                         <h2 className="text-2xl font-black text-white mb-3 leading-tight">
-                            {mode === 'register'
-                                ? `Novo ${cfg.label}`
-                                : activeRole === 'admin' ? 'Painel Admin'
-                                : activeRole === 'aluno' ? 'Olá, Aluno!'
-                                : 'Olá, Professor!'}
+                            {mode === 'register' ? `Novo ${cfg.label}` : activeRole === 'admin' ? 'Painel Admin' : `Olá, ${cfg.label}!`}
                         </h2>
 
                         <p className="text-sm text-blue-200 leading-relaxed mb-8">
-                            {mode === 'register'
-                                ? activeRole === 'aluno'
-                                    ? 'Use seu e-mail institucional @aluno.uepa.br para se cadastrar.'
-                                    : 'Informe seu SIAPE e departamento para criar sua conta.'
-                                : activeRole === 'admin'
-                                ? 'Gerencie horários, salas, professores e toda a grade acadêmica.'
-                                : activeRole === 'aluno'
-                                ? 'Consulte a disponibilidade de salas e visualize a grade de horários.'
-                                : 'Verifique os horários das turmas e a disponibilidade das salas.'}
+                            Sistema Cronos de Alocação — Campus XXII.
                         </p>
-
-                        <div className="flex flex-col gap-3 text-left">
-                            {(mode === 'register'
-                                ? activeRole === 'aluno'
-                                    ? ['E-mail @aluno.uepa.br obrigatório', 'Informe matrícula e curso', 'Aguarde aprovação do admin']
-                                    : ['E-mail institucional', 'SIAPE e departamento', 'Aguarde aprovação do admin']
-                                : activeRole === 'admin'
-                                ? ['Gerenciar alocações', 'Cadastrar professores', 'Configurar salas e cursos']
-                                : ['Ver grade de horários', 'Consultar disponibilidade', 'Filtrar por curso e dia']
-                            ).map((feat, i) => (
-                                <div key={i} className="flex items-center gap-3">
-                                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                                        style={{ background: 'rgba(255,255,255,0.2)' }}>
-                                        <span className="text-white text-[10px] font-bold">{i + 1}</span>
-                                    </div>
-                                    <span className="text-sm text-blue-100">{feat}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold"
-                            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: 'white' }}>
-                            <div className="w-2 h-2 rounded-full bg-green-400" style={{ animation: 'pulse 2s infinite' }} />
-                            {mode === 'register' ? 'Cadastro Seguro' : activeRole === 'admin' ? 'Acesso Completo' : 'Somente Visualização'}
-                        </div>
                     </div>
                 </div>
             </div>
